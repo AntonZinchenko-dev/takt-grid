@@ -1,8 +1,9 @@
 export const HOUR_MS = 3_600_000
 export const DAY_MS = 24 * HOUR_MS
 
-export const RANGE_START_DAYS = -60
-export const RANGE_END_DAYS = 305
+// Буфер назад нужен дашборду/аналитике (тренды за неделю, "вчера") — не для скролла в прошлое.
+export const RANGE_START_DAYS = -14
+export const RANGE_END_DAYS = 90
 export const TOTAL_DAYS = RANGE_END_DAYS - RANGE_START_DAYS
 export const TOTAL_HOURS = TOTAL_DAYS * 24
 

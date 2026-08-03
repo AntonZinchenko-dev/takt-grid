@@ -16,7 +16,8 @@ const DAY_MS = 86_400_000
 export function ConflictsPage() {
   const machinesQuery = useMachinesQuery()
   const downtimeQuery = useDowntimeRulesQuery()
-  const ordersQuery = useOrdersQuery({ limit: 6000 })
+  // Лимит с запасом над объёмом мок-датасета (~22k заказов, см. use-schedule-data.ts)
+  const ordersQuery = useOrdersQuery({ limit: 30000 })
 
   const from = useMemo(() => new Date(Date.now() - 15 * DAY_MS).toISOString(), [])
   const to = useMemo(() => new Date(Date.now() + 40 * DAY_MS).toISOString(), [])

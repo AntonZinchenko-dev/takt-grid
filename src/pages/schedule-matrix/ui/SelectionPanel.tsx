@@ -1,12 +1,14 @@
 import { observer } from 'mobx-react-lite'
-import { useMemo } from 'react'
-import { ArrowRightLeft, Copy, Pencil, Trash2, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ArrowRightLeft, Copy, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import type { GridStore } from '../model/grid-store'
+import { DAY_MS } from '../lib/timeline'
 import type { OccupancyIndex } from '@/shared/lib/occupancy-index'
-import type { ScheduleAssignment } from '@/entities/schedule-assignment'
+import { useMoveAssignmentMutation, type ScheduleAssignment } from '@/entities/schedule-assignment'
 import type { Order, OrderStatus } from '@/entities/order'
-import { statusLabel } from '@/entities/order'
+import { statusLabel, useCreateOrderMutation, useDeleteOrderMutation } from '@/entities/order'
 import { Button } from '@/shared/ui/Button'
+import { ApiError } from '@/shared/api'
 import { Legend } from './Legend'
 import { Minimap } from './Minimap'
 
@@ -26,15 +28,26 @@ interface SelectionPanelProps {
   onOpenBulkEdit: () => void
 }
 
+type ActionMode = 'move' | 'copy' | 'delete' | null
+
 export const SelectionPanel = observer(function SelectionPanel({ store, occupancyIndex, assignmentsById, ordersById, onOpenBulkEdit }: SelectionPanelProps) {
   const selection = store.selection
   const range = store.selectionRangeMs
   const machines = store.selectedMachines
 
+  const [actionMode, setActionMode] = useState<ActionMode>(null)
+  const [shiftDays, setShiftDays] = useState(1)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionPending, setActionPending] = useState(false)
+
+  const moveMutation = useMoveAssignmentMutation()
+  const createMutation = useCreateOrderMutation()
+  const deleteMutation = useDeleteOrderMutation()
+
   const summary = useMemo(() => {
     if (!selection || !range) return null
 
-    const orders: Order[] = []
+    const entries: Array<{ order: Order; assignment: ScheduleAssignment }> = []
     let machineHours = 0
     for (const machine of machines) {
       const overlapping = occupancyIndex.findOverlapping(machine.id, range.start, range.end)
@@ -42,17 +55,74 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
         machineHours += (Math.min(interval.end, range.end) - Math.max(interval.start, range.start)) / 3_600_000
         const assignment = assignmentsById.get(interval.id)
         const order = assignment ? ordersById.get(assignment.orderId) : undefined
-        if (order) orders.push(order)
+        if (order && assignment) entries.push({ order, assignment })
       }
     }
 
     const statusCounts = new Map<OrderStatus, number>()
-    for (const order of orders) statusCounts.set(order.status, (statusCounts.get(order.status) ?? 0) + 1)
+    for (const { order } of entries) statusCounts.set(order.status, (statusCounts.get(order.status) ?? 0) + 1)
 
     const durationHours = selection.hourEnd - selection.hourStart
 
-    return { orders, machineHours: Math.round(machineHours), durationHours, statusCounts }
+    return { entries, orders: entries.map((e) => e.order), machineHours: Math.round(machineHours), durationHours, statusCounts }
   }, [selection, range, machines, occupancyIndex, assignmentsById, ordersById])
+
+  const closeAction = () => {
+    setActionMode(null)
+    setActionError(null)
+  }
+
+  const handleApplyShift = async (mode: 'move' | 'copy') => {
+    if (!summary || summary.entries.length === 0) return
+    setActionPending(true)
+    setActionError(null)
+    const deltaMs = shiftDays * DAY_MS
+
+    const results = await Promise.allSettled(
+      summary.entries.map(({ order, assignment }) => {
+        const newStartAt = new Date(new Date(assignment.startAt).getTime() + deltaMs).toISOString()
+        const newEndAt = new Date(new Date(assignment.endAt).getTime() + deltaMs).toISOString()
+        if (mode === 'move') {
+          return moveMutation.mutateAsync({ id: assignment.id, machineId: assignment.machineId, startAt: newStartAt, endAt: newEndAt })
+        }
+        return createMutation.mutateAsync({
+          productId: order.productId,
+          quantity: order.quantity,
+          deadline: new Date(new Date(order.deadline).getTime() + deltaMs).toISOString(),
+          priority: order.priority,
+          machineId: assignment.machineId,
+          startAt: newStartAt,
+          endAt: newEndAt,
+        })
+      }),
+    )
+
+    setActionPending(false)
+    const failed = results.filter((r) => r.status === 'rejected')
+    if (failed.length > 0) {
+      const reason = failed[0] as PromiseRejectedResult
+      const message = reason.reason instanceof ApiError ? reason.reason.message : 'Не удалось выполнить операцию'
+      setActionError(`${failed.length} из ${results.length} не выполнено: ${message}`)
+    } else {
+      closeAction()
+      store.clearSelection()
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!summary || summary.entries.length === 0) return
+    setActionPending(true)
+    setActionError(null)
+    const results = await Promise.allSettled(summary.entries.map(({ order }) => deleteMutation.mutateAsync(order.id)))
+    setActionPending(false)
+    const failed = results.filter((r) => r.status === 'rejected')
+    if (failed.length > 0) {
+      setActionError(`${failed.length} из ${results.length} не удалено`)
+    } else {
+      closeAction()
+      store.clearSelection()
+    }
+  }
 
   if (!selection || !summary) {
     return (
@@ -106,25 +176,85 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
         </ul>
       </div>
 
-      <div>
+      <div className="min-w-[210px]">
         <p className="mb-2 text-xs font-semibold text-[var(--color-ink-900)]">Быстрые действия</p>
         <div className="flex flex-col gap-1.5">
           <Button size="sm" variant="primary" onClick={onOpenBulkEdit} disabled={summary.orders.length === 0} className="justify-start">
             <Pencil className="h-3.5 w-3.5" />
             Массовое редактирование
           </Button>
-          <Button size="sm" variant="secondary" title="Групповой перенос всего выделения — этап 4 роадмапа. Перенос одного блока уже работает: просто перетащите его." className="justify-start">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setActionMode(actionMode === 'move' ? null : 'move')}
+            disabled={summary.orders.length === 0}
+            title="Групповой перенос всего выделения. Перенос одного блока — перетаскиванием."
+            className="justify-start"
+          >
             <ArrowRightLeft className="h-3.5 w-3.5" />
             Перенести
           </Button>
-          <Button size="sm" variant="secondary" title="Дублирование выбранных заказов — не в текущем срезе" className="justify-start">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setActionMode(actionMode === 'copy' ? null : 'copy')}
+            disabled={summary.orders.length === 0}
+            className="justify-start"
+          >
             <Copy className="h-3.5 w-3.5" />
             Копировать
           </Button>
-          <Button size="sm" variant="danger" title="Удаление заказов — не в текущем срезе" className="justify-start">
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() => setActionMode(actionMode === 'delete' ? null : 'delete')}
+            disabled={summary.orders.length === 0}
+            className="justify-start"
+          >
             <Trash2 className="h-3.5 w-3.5" />
             Удалить
           </Button>
+
+          {(actionMode === 'move' || actionMode === 'copy') && (
+            <div className="rounded-lg border border-[var(--color-border)] p-2">
+              <label className="flex items-center gap-1.5 text-xs text-[var(--color-ink-600)]">
+                Сдвинуть на
+                <input
+                  type="number"
+                  value={shiftDays}
+                  onChange={(e) => setShiftDays(Number(e.target.value))}
+                  className="h-7 w-14 rounded-md border border-[var(--color-border)] px-1.5 text-center text-xs"
+                />
+                дн.
+              </label>
+              <div className="mt-2 flex gap-1.5">
+                <Button size="sm" variant="primary" disabled={actionPending || shiftDays === 0} onClick={() => handleApplyShift(actionMode)} className="flex-1 justify-center">
+                  {actionPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Применить
+                </Button>
+                <Button size="sm" variant="secondary" disabled={actionPending} onClick={closeAction}>
+                  Отмена
+                </Button>
+              </div>
+              {actionError && <p className="mt-1.5 text-xs text-red-600">{actionError}</p>}
+            </div>
+          )}
+
+          {actionMode === 'delete' && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-2">
+              <p className="text-xs font-medium text-red-700">Удалить {summary.orders.length} заказ(ов) безвозвратно?</p>
+              <div className="mt-2 flex gap-1.5">
+                <Button size="sm" variant="danger" disabled={actionPending} onClick={handleDelete} className="flex-1 justify-center">
+                  {actionPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Подтвердить
+                </Button>
+                <Button size="sm" variant="secondary" disabled={actionPending} onClick={closeAction}>
+                  Отмена
+                </Button>
+              </div>
+              {actionError && <p className="mt-1.5 text-xs text-red-600">{actionError}</p>}
+            </div>
+          )}
         </div>
       </div>
 

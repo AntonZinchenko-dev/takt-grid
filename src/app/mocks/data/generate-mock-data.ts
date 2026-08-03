@@ -4,6 +4,7 @@ import type { Machine, MachineStatus, DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import type { Order, OrderPriority, OrderStatus } from '@/entities/order'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
+import { RANGE_START_DAYS, RANGE_END_DAYS } from '@/pages/schedule-matrix'
 
 /**
  * Синтетический датасет для MSW.
@@ -157,13 +158,20 @@ function buildScheduleAndOrders(
   products: Product[],
   now: Date,
 ): { orders: Order[]; assignments: ScheduleAssignment[] } {
-  const rangeStart = now.getTime() - 60 * DAY
-  const rangeEnd = now.getTime() + 305 * DAY
+  const rangeStart = now.getTime() + RANGE_START_DAYS * DAY
+  // TODO(temp/manual-testing): пусто с 6 числа текущего месяца — чтобы вручную
+  // потыкать создание/перенос заказов на чистом холсте. Убрать перед демо/коммитом.
+  const manualTestCutoff = new Date(now.getFullYear(), now.getMonth(), 6, 0, 0, 0, 0)
+  if (manualTestCutoff.getTime() <= now.getTime()) manualTestCutoff.setMonth(manualTestCutoff.getMonth() + 1)
+  const rangeEnd = Math.min(now.getTime() + RANGE_END_DAYS * DAY, manualTestCutoff.getTime())
 
   const orders: Order[] = []
   const assignments: ScheduleAssignment[] = []
   let orderSeq = 1000
-  const maxAssignmentsPerMachine = 55
+  // Safety net only — the real stop condition is cursor >= rangeEnd. Min step per
+  // iteration is a 2h assignment with no gap, so rangeEnd is always reached well
+  // before this many iterations; without it a bug in the advance logic could hang.
+  const maxAssignmentsPerMachine = 5000
 
   for (const machine of machines) {
     const productsForGroup = products.filter((p) => p.techMap.machineGroupId === machine.groupId)

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
 import { Card } from '@/shared/ui/Card'
@@ -15,6 +16,14 @@ export function MachinesPage() {
   const workshopsQuery = useWorkshopsQuery()
   const downtimeQuery = useDowntimeRulesQuery()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const location = useLocation()
+
+  // Переход из глобального поиска в шапке — сразу открыть карточку станка
+  useEffect(() => {
+    const state = location.state as { openMachineId?: string } | null
+    if (state?.openMachineId) setSelectedId(state.openMachineId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const workshopNameById = useMemo(() => new Map((workshopsQuery.data ?? []).map((w) => [w.id, w.name])), [workshopsQuery.data])
 

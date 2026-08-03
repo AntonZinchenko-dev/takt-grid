@@ -25,6 +25,7 @@ interface ScheduleGridProps {
   assignmentsById: Map<string, ScheduleAssignment>
   ordersById: Map<string, Order>
   downtimeByMachine: Map<string, DowntimeRule[]>
+  onOpenOrderDetail: (assignmentId: string) => void
 }
 
 /**
@@ -44,6 +45,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
   assignmentsById,
   ordersById,
   downtimeByMachine,
+  onOpenOrderDetail,
 }: ScheduleGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const headerScrollRef = useRef<HTMLDivElement>(null)
@@ -321,8 +323,9 @@ export const ScheduleGrid = observer(function ScheduleGrid({
           />
 
           {/* Строки: фон + блоки заказов/простоев. pointer-events отключены на подложке ряда,
-              чтобы клики на пустом месте проваливались к слою выделения ниже, а кнопки блоков
-              (у них pointer-events auto по умолчанию) оставались кликабельны. */}
+              чтобы клики на пустом месте проваливались к слою выделения ниже. pointer-events
+              наследуется, поэтому сами блоки (OrderBlock/DowntimeBlock) явно возвращают auto —
+              иначе они тоже стали бы некликабельными. */}
           {rowVirtualizer.getVirtualItems().map((vRow) => {
             const row = store.flatRows[vRow.index]
             if (!row) return null
@@ -385,6 +388,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
                       store={store}
                       getContentPoint={getContentPoint}
                       onCommitDrag={handleCommitDrag}
+                      onOpenDetail={onOpenOrderDetail}
                       isDraggingOrigin={ghost?.assignmentId === interval.id}
                       dimmed={!matchesFilter}
                     />

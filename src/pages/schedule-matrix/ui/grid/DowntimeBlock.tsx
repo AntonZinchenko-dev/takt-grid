@@ -10,7 +10,7 @@ export function DowntimeBlock({ leftPx, widthPx, topPx, heightPx, reason }: Down
   return (
     <div
       title={reason}
-      className="absolute rounded-md border border-[var(--color-ink-400)]"
+      className="pointer-events-auto absolute rounded-md border border-[var(--color-ink-400)]"
       style={{
         left: leftPx,
         width: Math.max(widthPx - 2, 3),

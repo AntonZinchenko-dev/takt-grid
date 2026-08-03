@@ -19,10 +19,11 @@ function buildQuery(filter: OrdersFilter): string {
   return qs ? `?${qs}` : ''
 }
 
-export function useOrdersQuery(filter: OrdersFilter = {}) {
+export function useOrdersQuery(filter: OrdersFilter = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['orders', filter],
     queryFn: () => fetchJson<Order[]>(`/api/orders${buildQuery(filter)}`),
+    enabled: options.enabled ?? true,
   })
 }
 
@@ -45,6 +46,18 @@ export function useCreateOrderMutation() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+    },
+  })
+}
+
+export function useDeleteOrderMutation() {
+  const queryClient = useQueryClient()
+  return useMutation<{ deleted: boolean }, ApiError, string>({
+    mutationFn: (orderId) => fetchJson<{ deleted: boolean }>(`/api/orders/${orderId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
       queryClient.invalidateQueries({ queryKey: ['assignments'] })

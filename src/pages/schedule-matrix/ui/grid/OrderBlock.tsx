@@ -21,6 +21,7 @@ interface OrderBlockProps {
   store: GridStore
   getContentPoint: (clientX: number, clientY: number) => { x: number; y: number }
   onCommitDrag: (ghost: DragGhost) => void
+  onOpenDetail: (assignmentId: string) => void
   isDraggingOrigin?: boolean
   dimmed?: boolean
 }
@@ -41,6 +42,7 @@ export function OrderBlock({
   store,
   getContentPoint,
   onCommitDrag,
+  onOpenDetail,
   isDraggingOrigin,
   dimmed,
 }: OrderBlockProps) {
@@ -92,9 +94,8 @@ export function OrderBlock({
     if (state?.dragging) {
       if (store.dragGhost) onCommitDrag(store.dragGhost)
     } else {
-      // Обычный клик — выделяем диапазон этого блока (старое поведение)
-      const hourEnd = hourStart + durationHours
-      store.selectRange(rowIndex, hourStart, hourEnd)
+      // Обычный клик (без перетаскивания) — открываем карточку деталей заказа
+      onOpenDetail(assignmentId)
     }
   }
 
@@ -105,7 +106,7 @@ export function OrderBlock({
       onPointerUp={handlePointerUp}
       title={`${code} · ${status === 'done' ? 'выполнен' : priority}`}
       className={cn(
-        'absolute cursor-grab touch-none rounded-md border px-2 text-left text-[11px] font-medium leading-tight transition-[filter,opacity] hover:brightness-95 active:cursor-grabbing',
+        'pointer-events-auto absolute cursor-grab touch-none rounded-md border px-2 text-left text-[11px] font-medium leading-tight transition-[filter,opacity] hover:brightness-95 active:cursor-grabbing',
         done && 'opacity-70',
         isDraggingOrigin && 'opacity-25',
         dimmed && 'opacity-20 saturate-0',

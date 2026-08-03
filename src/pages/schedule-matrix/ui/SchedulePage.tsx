@@ -14,6 +14,7 @@ import { ScheduleGrid } from './grid/ScheduleGrid'
 import { SelectionPanel } from './SelectionPanel'
 import { BulkEditPanel } from './BulkEditPanel'
 import { OrderWizard } from './wizard/OrderWizard'
+import { OrderDetailDrawer } from './OrderDetailDrawer'
 
 export function SchedulePage() {
   const workshopsQuery = useWorkshopsQuery()
@@ -38,8 +39,16 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const [store] = useState(() => new GridStore(workshops, machines))
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null)
   const data = useScheduleData(store.anchorDate)
   const location = useLocation()
+
+  const workshopsById = new Map(workshops.map((w) => [w.id, w]))
+  const machinesById = new Map(machines.map((m) => [m.id, m]))
+  const openAssignment = openAssignmentId ? data.assignmentsById.get(openAssignmentId) : undefined
+  const openOrder = openAssignment ? data.ordersById.get(openAssignment.orderId) : undefined
+  const openMachine = openAssignment ? machinesById.get(openAssignment.machineId) : undefined
+  const openWorkshop = openMachine ? workshopsById.get(openMachine.workshopId) : undefined
 
   // Переход из "Конфликтов"/"Дашборда" сразу к нужному моменту в матрице
   useEffect(() => {
@@ -57,6 +66,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
         assignmentsById={data.assignmentsById}
         ordersById={data.ordersById}
         downtimeByMachine={data.downtimeByMachine}
+        onOpenOrderDetail={setOpenAssignmentId}
       />
       <SelectionPanel
         store={store}
@@ -76,6 +86,15 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
         />
       )}
       {wizardOpen && <OrderWizard store={store} products={data.products} machines={machines} onClose={() => setWizardOpen(false)} />}
+      {openAssignment && openOrder && openMachine && (
+        <OrderDetailDrawer
+          order={openOrder}
+          assignment={openAssignment}
+          machine={openMachine}
+          workshopName={openWorkshop?.name ?? '—'}
+          onClose={() => setOpenAssignmentId(null)}
+        />
+      )}
     </div>
   )
 })

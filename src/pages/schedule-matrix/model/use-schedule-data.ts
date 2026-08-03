@@ -18,7 +18,9 @@ export function useScheduleData(anchorDate: Date) {
   const productsQuery = useProductsQuery()
   // Полный список заказов — упрощение мок-слоя (см. ТЗ, известное ограничение этапа 1-2):
   // в проде это был бы постраничный запрос по machineId/дате, а не разовая выгрузка.
-  const ordersQuery = useOrdersQuery({ limit: 6000 })
+  // Лимит с запасом над объёмом мок-датасета (~22k заказов на диапазон -14..+90 дней) —
+  // если лимит меньше реального количества, часть блоков в шахматке останется без заказа.
+  const ordersQuery = useOrdersQuery({ limit: 30000 })
 
   const from = new Date(anchorDate.getTime() - WINDOW_PAD_DAYS * DAY_MS).toISOString()
   const to = new Date(anchorDate.getTime() + WINDOW_PAD_DAYS * DAY_MS).toISOString()

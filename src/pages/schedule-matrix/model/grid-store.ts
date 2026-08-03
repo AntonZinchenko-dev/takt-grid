@@ -199,12 +199,6 @@ export class GridStore {
     this.selection = null
   }
 
-  /** Программное выделение (клик по блоку заказа) — в отличие от drag, не проходит через startSelection/endSelection. */
-  selectRange(rowIndex: number, hourStart: number, hourEnd: number): void {
-    this.selecting = false
-    this.selection = { rowStart: rowIndex, rowEnd: rowIndex, hourStart, hourEnd }
-  }
-
   // ---- Drag-перенос существующего блока между станками/временем ----
 
   startBlockDrag(params: {

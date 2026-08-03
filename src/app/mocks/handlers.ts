@@ -188,6 +188,19 @@ export const handlers = [
     return HttpResponse.json(order, { status: 201 })
   }),
 
+  /** Удаление заказа целиком вместе с его назначением в графике (массовое удаление в матрице). */
+  http.delete('/api/orders/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.orders.findIndex((o) => o.id === params.id)
+    if (index === -1) {
+      return HttpResponse.json({ message: 'Заказ не найден' }, { status: 404 })
+    }
+    dataset.orders.splice(index, 1)
+    dataset.assignments = dataset.assignments.filter((a) => a.orderId !== params.id)
+    return HttpResponse.json({ deleted: true })
+  }),
+
   /** Добавление простоя/ТО станка со страницы "Станки и оборудование". */
   http.post('/api/downtime-rules', async ({ request }) => {
     await simulateNetwork()
