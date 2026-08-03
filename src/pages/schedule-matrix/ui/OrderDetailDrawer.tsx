@@ -4,7 +4,12 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { Order } from '@/entities/order'
 import { priorityLabel, priorityColorVar, priorityBgVar, statusLabel } from '@/entities/order'
-import { useMoveAssignmentMutation, useAssignmentsWindowQuery, type ScheduleAssignment } from '@/entities/schedule-assignment'
+import {
+  useMoveAssignmentMutation,
+  useUpdateAssignmentResultMutation,
+  useAssignmentsWindowQuery,
+  type ScheduleAssignment,
+} from '@/entities/schedule-assignment'
 import type { Machine, DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import { Badge } from '@/shared/ui/Badge'
@@ -55,6 +60,31 @@ export function OrderDetailDrawer({
 }: OrderDetailDrawerProps) {
   const durationHours = Math.round((new Date(assignment.endAt).getTime() - new Date(assignment.startAt).getTime()) / 3_600_000)
   const [resolveOpen, setResolveOpen] = useState(autoResolve)
+
+  const resultMutation = useUpdateAssignmentResultMutation()
+  const [resultInput, setResultInput] = useState(assignment.actualQuantity !== undefined ? String(assignment.actualQuantity) : '')
+  useEffect(() => {
+    setResultInput(assignment.actualQuantity !== undefined ? String(assignment.actualQuantity) : '')
+  }, [assignment.id, assignment.actualQuantity])
+
+  const parsedResult = resultInput.trim() === '' ? null : Number(resultInput)
+  const resultIsValid = parsedResult !== null && !Number.isNaN(parsedResult) && parsedResult >= 0 && parsedResult <= assignment.plannedQuantity
+  const resultPercent = resultIsValid && assignment.plannedQuantity > 0 ? Math.round((parsedResult / assignment.plannedQuantity) * 100) : null
+
+  const handleResultChange = (raw: string) => {
+    if (raw.trim() === '') {
+      setResultInput('')
+      return
+    }
+    const num = Number(raw)
+    if (Number.isNaN(num)) return
+    setResultInput(String(Math.min(Math.max(num, 0), assignment.plannedQuantity)))
+  }
+
+  const handleSaveResult = () => {
+    if (!resultIsValid) return
+    resultMutation.mutate({ id: assignment.id, actualQuantity: parsedResult })
+  }
 
   const now = useMemo(() => new Date(), [])
   const product = products.find((p) => p.id === order.productId)
@@ -215,6 +245,42 @@ export function OrderDetailDrawer({
                 <span className="text-[var(--color-ink-600)]">Плановое количество</span>
                 <span className="font-medium text-[var(--color-ink-900)]">{assignment.plannedQuantity} шт</span>
               </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[var(--color-ink-900)]">Результат</p>
+            <div className="space-y-2 rounded-lg border border-[var(--color-border)] px-3 py-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={assignment.plannedQuantity}
+                  value={resultInput}
+                  onChange={(e) => handleResultChange(e.target.value)}
+                  placeholder="Факт, шт"
+                  className="h-9 w-full rounded-lg border border-[var(--color-border)] px-3 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+                />
+                <Button type="button" variant="secondary" size="sm" disabled={!resultIsValid || resultMutation.isPending} onClick={handleSaveResult}>
+                  {resultMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Сохранить
+                </Button>
+              </div>
+              <p className="text-[11px] text-[var(--color-ink-400)]">Не больше планового количества — {assignment.plannedQuantity} шт</p>
+
+              {resultPercent !== null && (
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-ink-600)]">
+                    <span>Готовность плана</span>
+                    <span className="font-semibold tabular-nums text-[var(--color-ink-900)]">{resultPercent}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
+                    <div className="h-full rounded-full transition-[width]" style={{ width: `${resultPercent}%`, backgroundColor: priorityColorVar(order.priority) }} />
+                  </div>
+                </div>
+              )}
+
+              {resultMutation.isError && <p className="text-xs font-medium text-red-600">Не удалось сохранить результат. Попробуйте ещё раз.</p>}
             </div>
           </div>
 

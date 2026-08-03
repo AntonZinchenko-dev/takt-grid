@@ -18,6 +18,9 @@ interface OrderBlockProps {
   rowIndex: number
   hourStart: number
   durationHours: number
+  plannedQuantity?: number
+  actualQuantity?: number
+  requiredGroupId: string
   store: GridStore
   getContentPoint: (clientX: number, clientY: number) => { x: number; y: number }
   onCommitDrag: (ghost: DragGhost) => void
@@ -25,6 +28,7 @@ interface OrderBlockProps {
   isDraggingOrigin?: boolean
   dimmed?: boolean
 }
+
 
 export function OrderBlock({
   leftPx,
@@ -39,6 +43,9 @@ export function OrderBlock({
   rowIndex,
   hourStart,
   durationHours,
+  plannedQuantity,
+  actualQuantity,
+  requiredGroupId,
   store,
   getContentPoint,
   onCommitDrag,
@@ -52,6 +59,7 @@ export function OrderBlock({
   const color = done ? 'var(--color-priority-done)' : priorityColorVar(priority)
   const bg = done ? 'var(--color-priority-done-bg)' : priorityBgVar(priority)
   const showLabel = widthPx >= 46
+  const resultPercent = actualQuantity !== undefined && plannedQuantity ? Math.round(Math.min(1, actualQuantity / plannedQuantity) * 100) : null
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return
@@ -79,6 +87,7 @@ export function OrderBlock({
         hourStart,
         durationHours,
         grabOffsetHours: grabHour - hourStart,
+        requiredGroupId,
       })
     }
 
@@ -104,9 +113,9 @@ export function OrderBlock({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      title={`${code} · ${status === 'done' ? 'выполнен' : priority}`}
+      title={`${code} · ${status === 'done' ? 'выполнен' : priority}${resultPercent !== null ? ` · результат ${resultPercent}%` : ''}`}
       className={cn(
-        'pointer-events-auto absolute cursor-grab touch-none rounded-md border px-2 text-left text-[11px] font-medium leading-tight transition-[filter,opacity] hover:brightness-95 active:cursor-grabbing',
+        'pointer-events-auto absolute cursor-grab touch-none overflow-hidden rounded-md border px-2 text-left text-[11px] font-medium leading-tight transition-[filter,opacity] hover:brightness-95 active:cursor-grabbing',
         done && 'opacity-70',
         isDraggingOrigin && 'opacity-25',
         dimmed && 'opacity-20 saturate-0',
@@ -116,12 +125,15 @@ export function OrderBlock({
         width: Math.max(widthPx - 2, 3),
         top: topPx,
         height: heightPx,
-        backgroundColor: bg,
         borderColor: color,
         color,
       }}
     >
-      {showLabel && <span className="block truncate pt-1">{code}</span>}
+      <span className="absolute inset-0" style={{ backgroundColor: bg }} />
+      {resultPercent !== null && resultPercent > 0 && (
+        <span className="absolute inset-y-0 left-0 transition-[width]" style={{ width: `${resultPercent}%`, backgroundColor: color, opacity: 0.4 }} />
+      )}
+      {showLabel && <span className="relative block truncate pt-1">{code}</span>}
     </button>
   )
 }

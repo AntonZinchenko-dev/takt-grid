@@ -99,6 +99,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
         occupancyIndex={data.occupancyIndex}
         assignmentsById={data.assignmentsById}
         ordersById={data.ordersById}
+        productsById={data.productsById}
         downtimeByMachine={data.downtimeByMachine}
         onOpenOrderDetail={(id) => {
           setConflictResolve(null)

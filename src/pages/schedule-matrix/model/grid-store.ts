@@ -33,6 +33,8 @@ export interface DragGhost {
   targetHourStart: number
   /** Часовое смещение от левого края блока до точки, за которую его "схватили" — чтобы блок не прыгал под курсор левым краем. */
   grabOffsetHours: number
+  /** Группа станков, требуемая техкартой продукта заказа — перенос на станок другой группы запрещён. */
+  requiredGroupId: string
 }
 
 export interface GridFilters {
@@ -210,6 +212,7 @@ export class GridStore {
     hourStart: number
     durationHours: number
     grabOffsetHours: number
+    requiredGroupId: string
   }): void {
     this.clearSelection()
     this.dragGhost = {
@@ -223,6 +226,7 @@ export class GridStore {
       targetRowIndex: params.rowIndex,
       targetHourStart: params.hourStart,
       grabOffsetHours: params.grabOffsetHours,
+      requiredGroupId: params.requiredGroupId,
     }
   }
 

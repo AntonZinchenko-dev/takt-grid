@@ -33,6 +33,26 @@ export function useMoveAssignmentMutation() {
   })
 }
 
+export interface UpdateAssignmentResultParams {
+  id: string
+  actualQuantity: number
+}
+
+export function useUpdateAssignmentResultMutation() {
+  const queryClient = useQueryClient()
+  return useMutation<ScheduleAssignment, ApiError, UpdateAssignmentResultParams>({
+    mutationFn: ({ id, actualQuantity }) =>
+      fetchJson<ScheduleAssignment>(`/api/assignments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actualQuantity }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+    },
+  })
+}
+
 export interface BulkUpdateParams {
   updates: Array<{ id: string; plannedQuantity: number }>
 }

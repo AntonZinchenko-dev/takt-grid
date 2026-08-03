@@ -6,4 +6,6 @@ export interface ScheduleAssignment {
   startAt: string
   endAt: string
   plannedQuantity: number
+  /** Фактически выполненное количество — вводится вручную в карточке заказа. */
+  actualQuantity?: number
 }

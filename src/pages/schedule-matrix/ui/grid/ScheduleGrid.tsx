@@ -14,6 +14,7 @@ import type { ScheduleAssignment } from '@/entities/schedule-assignment'
 import { useMoveAssignmentMutation } from '@/entities/schedule-assignment'
 import type { Order } from '@/entities/order'
 import type { DowntimeRule } from '@/entities/machine'
+import type { Product } from '@/entities/product'
 import { ApiError } from '@/shared/api'
 
 const LABEL_WIDTH = 224
@@ -24,6 +25,7 @@ interface ScheduleGridProps {
   occupancyIndex: OccupancyIndex
   assignmentsById: Map<string, ScheduleAssignment>
   ordersById: Map<string, Order>
+  productsById: Map<string, Product>
   downtimeByMachine: Map<string, DowntimeRule[]>
   onOpenOrderDetail: (assignmentId: string) => void
 }
@@ -44,6 +46,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
   occupancyIndex,
   assignmentsById,
   ordersById,
+  productsById,
   downtimeByMachine,
   onOpenOrderDetail,
 }: ScheduleGridProps) {
@@ -164,6 +167,11 @@ export const ScheduleGrid = observer(function ScheduleGrid({
       if (!targetRow || targetRow.kind !== 'machine') return
       if (ghost.targetRowIndex === ghost.originRowIndex && ghost.targetHourStart === ghost.originHourStart) return
 
+      if (targetRow.machine.groupId !== ghost.requiredGroupId) {
+        showDropError(`Станок «${targetRow.machine.name}» не подходит по группе для заказа «${ghost.orderCode}»`)
+        return
+      }
+
       const newStartMs = store.epochMs + ghost.targetHourStart * HOUR_MS
       const newEndMs = newStartMs + ghost.durationHours * HOUR_MS
 
@@ -225,7 +233,10 @@ export const ScheduleGrid = observer(function ScheduleGrid({
     const targetStartMs = store.epochMs + ghost.targetHourStart * HOUR_MS
     const targetEndMs = targetStartMs + ghost.durationHours * HOUR_MS
     const isValid = Boolean(
-      targetRow && targetRow.kind === 'machine' && !occupancyIndex.hasOverlap(targetRow.machine.id, targetStartMs, targetEndMs, ghost.assignmentId),
+      targetRow &&
+        targetRow.kind === 'machine' &&
+        targetRow.machine.groupId === ghost.requiredGroupId &&
+        !occupancyIndex.hasOverlap(targetRow.machine.id, targetStartMs, targetEndMs, ghost.assignmentId),
     )
     ghostView = {
       label: ghost.orderCode,
@@ -345,12 +356,19 @@ export const ScheduleGrid = observer(function ScheduleGrid({
             const downtimeRules = (downtimeByMachine.get(machine.id) ?? []).filter(
               (r) => new Date(r.startAt).getTime() < rangeEndMs && new Date(r.endAt).getTime() > rangeStartMs,
             )
+            const groupMismatch = Boolean(ghost && machine.groupId !== ghost.requiredGroupId)
 
             return (
               <div
                 key={vRow.key}
                 className="pointer-events-none absolute left-0 w-full border-b border-[var(--color-border)]"
-                style={{ top: vRow.start, height: vRow.size }}
+                style={{
+                  top: vRow.start,
+                  height: vRow.size,
+                  backgroundImage: groupMismatch
+                    ? 'repeating-linear-gradient(135deg, rgba(185, 28, 28, 0.07) 0, rgba(185, 28, 28, 0.07) 6px, transparent 6px, transparent 12px)'
+                    : undefined,
+                }}
               >
                 {downtimeRules.map((rule) => {
                   const left = msToPx(new Date(rule.startAt).getTime())
@@ -363,6 +381,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
                 {overlapping.map((interval) => {
                   const assignment = assignmentsById.get(interval.id)
                   const order = assignment ? ordersById.get(assignment.orderId) : undefined
+                  const product = order ? productsById.get(order.productId) : undefined
                   const left = msToPx(interval.start)
                   const width = msToPx(interval.end) - left
                   const blockHourStart = Math.round((interval.start - store.epochMs) / HOUR_MS)
@@ -380,6 +399,9 @@ export const ScheduleGrid = observer(function ScheduleGrid({
                       code={order?.code ?? '…'}
                       priority={order?.priority ?? 'normal'}
                       status={order?.status ?? 'planned'}
+                      plannedQuantity={assignment?.plannedQuantity}
+                      actualQuantity={assignment?.actualQuantity}
+                      requiredGroupId={product?.techMap.machineGroupId ?? ''}
                       assignmentId={interval.id}
                       orderId={assignment?.orderId ?? ''}
                       rowIndex={vRow.index}

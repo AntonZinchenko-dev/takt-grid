@@ -93,29 +93,36 @@ export const handlers = [
    */
   http.patch('/api/assignments/:id', async ({ request, params }) => {
     await simulateNetwork()
-    const body = (await request.json()) as { machineId: string; startAt: string; endAt: string }
+    const body = (await request.json()) as Partial<{ machineId: string; startAt: string; endAt: string; actualQuantity: number }>
     const dataset = getMockDataset()
     const assignment = dataset.assignments.find((a) => a.id === params.id)
     if (!assignment) {
       return HttpResponse.json({ message: 'Назначение не найдено' }, { status: 404 })
     }
 
-    const newStart = new Date(body.startAt).getTime()
-    const newEnd = new Date(body.endAt).getTime()
-    const conflict = dataset.assignments.find(
-      (a) =>
-        a.id !== assignment.id &&
-        a.machineId === body.machineId &&
-        new Date(a.startAt).getTime() < newEnd &&
-        new Date(a.endAt).getTime() > newStart,
-    )
-    if (conflict) {
-      return HttpResponse.json({ message: 'Станок занят в это время' }, { status: 409 })
+    if (body.machineId !== undefined && body.startAt !== undefined && body.endAt !== undefined) {
+      const newStart = new Date(body.startAt).getTime()
+      const newEnd = new Date(body.endAt).getTime()
+      const conflict = dataset.assignments.find(
+        (a) =>
+          a.id !== assignment.id &&
+          a.machineId === body.machineId &&
+          new Date(a.startAt).getTime() < newEnd &&
+          new Date(a.endAt).getTime() > newStart,
+      )
+      if (conflict) {
+        return HttpResponse.json({ message: 'Станок занят в это время' }, { status: 409 })
+      }
+
+      assignment.machineId = body.machineId
+      assignment.startAt = body.startAt
+      assignment.endAt = body.endAt
     }
 
-    assignment.machineId = body.machineId
-    assignment.startAt = body.startAt
-    assignment.endAt = body.endAt
+    if (body.actualQuantity !== undefined) {
+      assignment.actualQuantity = body.actualQuantity
+    }
+
     return HttpResponse.json(assignment)
   }),
 
