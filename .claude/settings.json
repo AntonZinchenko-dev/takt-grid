@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill //PID 22788 //F)",
+      "Bash(git reset *)",
+      "Bash(git restore *)",
+      "Bash(rm -rf coverage/)",
+      "Bash(xxd)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}

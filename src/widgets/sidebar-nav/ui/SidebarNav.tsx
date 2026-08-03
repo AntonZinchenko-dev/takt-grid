@@ -80,6 +80,9 @@ export function SidebarNav() {
           {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
           {!collapsed && <span>Свернуть меню</span>}
         </button>
+        {!collapsed && (
+          <p className="mt-2 px-2.5 text-[11px] text-[var(--color-ink-400)]">© {new Date().getFullYear()} Anton Zinchenko</p>
+        )}
       </div>
     </aside>
   )

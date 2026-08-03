@@ -10,6 +10,7 @@ import {
   AnalyticsPage,
   CalendarPage,
   SettingsPage,
+  NotFoundPage,
 } from './lazy-pages'
 
 export const router = createBrowserRouter([
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { path: '/analytics', element: <AnalyticsPage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])

@@ -70,3 +70,7 @@ src/
 ├── entities/       # machine, order, product, workshop, schedule-assignment
 └── shared/         # ui-кит, lib (occupancy-index, cn), api (fetchJson, queryClient)
 ```
+
+## Лицензия
+
+© 2026 Anton Zinchenko. Распространяется по лицензии [MIT](./LICENSE).
