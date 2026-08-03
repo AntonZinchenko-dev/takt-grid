@@ -1,11 +1,21 @@
-import { X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { X, Search, Loader2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { Order } from '@/entities/order'
 import { priorityLabel, priorityColorVar, priorityBgVar, statusLabel } from '@/entities/order'
-import type { ScheduleAssignment } from '@/entities/schedule-assignment'
-import type { Machine } from '@/entities/machine'
+import { useMoveAssignmentMutation, useAssignmentsWindowQuery, type ScheduleAssignment } from '@/entities/schedule-assignment'
+import type { Machine, DowntimeRule } from '@/entities/machine'
+import type { Product } from '@/entities/product'
 import { Badge } from '@/shared/ui/Badge'
+import { Button } from '@/shared/ui/Button'
+import { OccupancyIndex } from '@/shared/lib/occupancy-index'
+import type { GridStore } from '../model/grid-store'
+import { findSlotCandidates, type SlotCandidate } from '../lib/slot-candidates'
+import { DAY_MS, dateToHourIndex } from '../lib/timeline'
+import { cn } from '@/shared/lib/cn'
+
+const SEARCH_HORIZON_DAYS = 120
 
 const STATUS_DOT: Record<Order['status'], string> = {
   planned: 'var(--color-priority-normal)',
@@ -16,15 +26,122 @@ const STATUS_DOT: Record<Order['status'], string> = {
 }
 
 interface OrderDetailDrawerProps {
+  store: GridStore
   order: Order
   assignment: ScheduleAssignment
   machine: Machine
   workshopName: string
+  machines: Machine[]
+  products: Product[]
+  downtimeByMachine: Map<string, DowntimeRule[]>
+  /** Открыт из вкладки "Конфликты" — сразу разворачиваем поиск нового слота. */
+  autoResolve?: boolean
+  conflictReason?: string
   onClose: () => void
 }
 
-export function OrderDetailDrawer({ order, assignment, machine, workshopName, onClose }: OrderDetailDrawerProps) {
+export function OrderDetailDrawer({
+  store,
+  order,
+  assignment,
+  machine,
+  workshopName,
+  machines,
+  products,
+  downtimeByMachine,
+  autoResolve = false,
+  conflictReason,
+  onClose,
+}: OrderDetailDrawerProps) {
   const durationHours = Math.round((new Date(assignment.endAt).getTime() - new Date(assignment.startAt).getTime()) / 3_600_000)
+  const [resolveOpen, setResolveOpen] = useState(autoResolve)
+
+  const now = useMemo(() => new Date(), [])
+  const product = products.find((p) => p.id === order.productId)
+  const techMap = product?.techMap
+  const groupMachines = useMemo(
+    () => (techMap ? machines.filter((m) => m.groupId === techMap.machineGroupId) : [machine]),
+    [techMap, machines, machine],
+  )
+
+  const deadlineDate = new Date(order.deadline)
+  const requiredMs = new Date(assignment.endAt).getTime() - new Date(assignment.startAt).getTime()
+  const searchEndMs = Math.min(deadlineDate.getTime() + 2 * DAY_MS, now.getTime() + SEARCH_HORIZON_DAYS * DAY_MS)
+
+  const searchFromIso = now.toISOString()
+  const searchToIso = new Date(Math.max(searchEndMs, now.getTime() + DAY_MS)).toISOString()
+  const assignmentsQuery = useAssignmentsWindowQuery(searchFromIso, searchToIso, resolveOpen)
+  const occupancyIndex = useMemo(() => new OccupancyIndex(assignmentsQuery.data ?? []), [assignmentsQuery.data])
+
+  const candidates = useMemo<SlotCandidate[]>(() => {
+    if (!resolveOpen || requiredMs <= 0) return []
+    return findSlotCandidates({
+      groupMachines,
+      occupancyIndex,
+      downtimeByMachine,
+      searchStart: now.getTime(),
+      searchEnd: Math.max(searchEndMs, now.getTime() + DAY_MS),
+      requiredMs,
+      deadlineMs: deadlineDate.getTime(),
+      excludeAssignmentId: assignment.id,
+    })
+    // deadlineDate меняется по ссылке каждый рендер — сравниваем по значению через getTime()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolveOpen, requiredMs, groupMachines, occupancyIndex, downtimeByMachine, now, searchEndMs, deadlineDate.getTime(), assignment.id])
+
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  useEffect(() => setSelectedIndex(0), [assignment.id])
+  const clampedIndex = candidates.length > 0 ? Math.min(selectedIndex, candidates.length - 1) : 0
+  const selectedCandidate = candidates[clampedIndex] ?? null
+
+  const showCandidate = (candidate: SlotCandidate) => {
+    store.setPreviewGhost({ machineId: candidate.machine.id, hourStart: dateToHourIndex(store.epochMs, new Date(candidate.start)), durationHours, label: order.productName })
+  }
+
+  useEffect(() => {
+    if (!resolveOpen || !selectedCandidate) {
+      store.setPreviewGhost(null)
+      return
+    }
+    showCandidate(selectedCandidate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolveOpen, selectedCandidate, store])
+
+  useEffect(() => () => store.setPreviewGhost(null), [store])
+
+  const moveMutation = useMoveAssignmentMutation()
+
+  const handleApplyMove = () => {
+    if (!selectedCandidate) return
+    moveMutation.mutate(
+      {
+        id: assignment.id,
+        machineId: selectedCandidate.machine.id,
+        startAt: new Date(selectedCandidate.start).toISOString(),
+        endAt: new Date(selectedCandidate.end).toISOString(),
+      },
+      {
+        onSuccess: () => {
+          store.setPreviewGhost(null)
+          store.jumpToDate(new Date(selectedCandidate.start))
+          onClose()
+        },
+      },
+    )
+  }
+
+  const feasibility: { icon: typeof CheckCircle2; color: string; bg: string; text: string } | null = !resolveOpen
+    ? null
+    : candidates.length === 0
+      ? { icon: XCircle, color: 'var(--color-priority-critical)', bg: 'var(--color-priority-critical-bg)', text: `Не удаётся найти окно на ${SEARCH_HORIZON_DAYS} дней вперёд ни на одном станке группы «${groupMachines[0]?.groupName ?? ''}»` }
+      : selectedCandidate?.fitsDeadline
+        ? { icon: CheckCircle2, color: 'var(--color-priority-low)', bg: 'var(--color-priority-low-bg)', text: 'Укладывается в срок' }
+        : {
+            icon: AlertTriangle,
+            color: 'var(--color-priority-high)',
+            bg: 'var(--color-priority-high-bg)',
+            text: `Не укладывается в дедлайн — ближайший реалистичный вариант: ${selectedCandidate ? format(new Date(selectedCandidate.end), 'd MMMM, HH:mm', { locale: ru }) : ''}`,
+          }
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -41,6 +158,13 @@ export function OrderDetailDrawer({ order, assignment, machine, workshopName, on
         </div>
 
         <div className="space-y-5 px-5 py-4">
+          {conflictReason && (
+            <div className="flex items-start gap-2 rounded-lg border border-[var(--color-priority-critical)] bg-[var(--color-priority-critical-bg)] px-3 py-2 text-xs font-medium text-[var(--color-priority-critical)]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Конфликт: пересекается с «{conflictReason}». Подберите новое время ниже.</span>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <Badge color={priorityColorVar(order.priority)} bg={priorityBgVar(order.priority)}>
               {priorityLabel(order.priority)}
@@ -93,6 +217,78 @@ export function OrderDetailDrawer({ order, assignment, machine, workshopName, on
               </div>
             </div>
           </div>
+
+          {!resolveOpen && (
+            <Button type="button" variant="secondary" onClick={() => setResolveOpen(true)} className="w-full justify-center">
+              <Search className="h-3.5 w-3.5" />
+              Найти новое время
+            </Button>
+          )}
+
+          {resolveOpen && (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold text-[var(--color-ink-900)]">Куда перенести</p>
+                <button type="button" onClick={() => setResolveOpen(false)} className="text-xs font-medium text-[var(--color-brand-600)] hover:underline">
+                  Скрыть
+                </button>
+              </div>
+
+              {assignmentsQuery.isLoading ? (
+                <div className="flex items-center justify-center py-6 text-[var(--color-ink-400)]">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  {feasibility && (
+                    <div className="mb-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-medium" style={{ borderColor: feasibility.color, backgroundColor: feasibility.bg, color: feasibility.color }}>
+                      <feasibility.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{feasibility.text}</span>
+                    </div>
+                  )}
+
+                  {candidates.length > 0 && (
+                    <div className="space-y-1.5">
+                      {candidates.map((c, i) => (
+                        <button
+                          type="button"
+                          key={`${c.machine.id}-${c.start}`}
+                          onClick={() => setSelectedIndex(i)}
+                          onMouseEnter={() => showCandidate(c)}
+                          onMouseLeave={() => selectedCandidate && showCandidate(selectedCandidate)}
+                          className={cn(
+                            'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors',
+                            i === clampedIndex ? 'border-[var(--color-brand-500)] bg-[var(--color-brand-50)]' : 'border-[var(--color-border)] hover:bg-[var(--color-canvas)]',
+                          )}
+                        >
+                          <span>
+                            <span className="block font-medium text-[var(--color-ink-900)]">{c.machine.name}</span>
+                            <span className="text-[var(--color-ink-600)]">
+                              {format(new Date(c.start), 'd MMM, HH:mm', { locale: ru })} – {format(new Date(c.end), 'HH:mm', { locale: ru })}
+                            </span>
+                          </span>
+                          {!c.fitsDeadline && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--color-priority-high)]" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {moveMutation.isError && <p className="mt-2 text-xs font-medium text-red-600">Не удалось перенести — возможно, слот уже заняли. Попробуйте другой вариант.</p>}
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    disabled={!selectedCandidate || moveMutation.isPending}
+                    onClick={handleApplyMove}
+                    className="mt-2 w-full justify-center"
+                  >
+                    {moveMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Перенести на выбранный слот
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

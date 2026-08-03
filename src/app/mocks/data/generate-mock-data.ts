@@ -1,21 +1,56 @@
-import { faker } from '@faker-js/faker'
 import type { Workshop } from '@/entities/workshop'
 import type { Machine, MachineStatus, DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import type { Order, OrderPriority, OrderStatus } from '@/entities/order'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
-import { RANGE_START_DAYS, RANGE_END_DAYS } from '@/pages/schedule-matrix'
+import { RANGE_START_DAYS, RANGE_END_DAYS } from '@/shared/lib/schedule-window'
 
 /**
  * Синтетический датасет для MSW.
  *
  * Принципиально НЕ используем faker для доменных существительных (названия
  * станков/продуктов) — генератор случайных слов на ru-локали faker даёт
- * нечитаемый шум. Домен — из курируемых списков ниже, faker — только для
- * чисел, дат, id и взвешенного случайного выбора. Seed фиксирован, чтобы
- * датасет был воспроизводим между перезапусками (важно для скриншотов
- * в портфолио и для дебага конкретной ячейки).
+ * нечитаемый шум. Домен — из курируемых списков ниже, а для чисел и
+ * взвешенного случайного выбора — собственный сидированный PRNG (mulberry32)
+ * вместо faker: та же воспроизводимость датасета между перезапусками (важно
+ * для скриншотов в портфолио и для дебага конкретной ячейки), но без ~800 КБ
+ * библиотеки faker в бандле ради трёх примитивов.
  */
+
+function createRng(seed: number) {
+  let state = seed
+  return function random(): number {
+    state |= 0
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const random = createRng(42)
+
+function randomInt({ min, max }: { min: number; max: number }): number {
+  return Math.floor(random() * (max - min + 1)) + min
+}
+
+function arrayElement<T>(items: readonly T[]): T {
+  const item = items[randomInt({ min: 0, max: items.length - 1 })]
+  if (item === undefined) throw new Error('arrayElement: empty array')
+  return item
+}
+
+function weightedArrayElement<T>(options: ReadonlyArray<{ value: T; weight: number }>): T {
+  const total = options.reduce((sum, o) => sum + o.weight, 0)
+  let roll = random() * total
+  for (const option of options) {
+    if (roll < option.weight) return option.value
+    roll -= option.weight
+  }
+  const last = options[options.length - 1]
+  if (last === undefined) throw new Error('weightedArrayElement: empty options')
+  return last.value
+}
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
@@ -27,6 +62,8 @@ export interface MockDataset {
   orders: Order[]
   assignments: ScheduleAssignment[]
   downtimeRules: DowntimeRule[]
+  /** Даты (yyyy-MM-dd), вручную переключённые относительно дефолтного статуса будни/выходной. */
+  holidayOverrides: Set<string>
   generatedAt: string
 }
 
@@ -91,9 +128,9 @@ function buildMachines(workshops: Workshop[]): Machine[] {
     const workshop = workshops[group.workshopIndex]
     if (!workshop) continue
     for (let i = 0; i < MACHINES_PER_GROUP; i++) {
-      const prefix = faker.helpers.arrayElement(group.namePrefixes)
-      const code = faker.number.int({ min: 100, max: 999 })
-      const status = faker.helpers.weightedArrayElement<MachineStatus>([
+      const prefix = arrayElement(group.namePrefixes)
+      const code = randomInt({ min: 100, max: 999 })
+      const status = weightedArrayElement<MachineStatus>([
         { value: 'running', weight: 8 },
         { value: 'idle', weight: 1.5 },
         { value: 'down', weight: 0.5 },
@@ -105,7 +142,7 @@ function buildMachines(workshops: Workshop[]): Machine[] {
         groupId: group.id,
         groupName: group.name,
         status,
-        capacityPerHour: faker.number.int({ min: group.capacityRange[0], max: group.capacityRange[1] }),
+        capacityPerHour: randomInt({ min: group.capacityRange[0], max: group.capacityRange[1] }),
         order: orderCounter++,
       })
     }
@@ -131,7 +168,7 @@ function buildProducts(): Product[] {
 }
 
 function pickPriority(): OrderPriority {
-  return faker.helpers.weightedArrayElement<OrderPriority>([
+  return weightedArrayElement<OrderPriority>([
     { value: 'low', weight: 3 },
     { value: 'normal', weight: 5 },
     { value: 'high', weight: 2.5 },
@@ -141,12 +178,12 @@ function pickPriority(): OrderPriority {
 
 function pickBaseStatus(isPast: boolean): OrderStatus {
   if (isPast) {
-    return faker.helpers.weightedArrayElement<OrderStatus>([
+    return weightedArrayElement<OrderStatus>([
       { value: 'done', weight: 9 },
       { value: 'overdue', weight: 1 },
     ])
   }
-  return faker.helpers.weightedArrayElement<OrderStatus>([
+  return weightedArrayElement<OrderStatus>([
     { value: 'planned', weight: 6 },
     { value: 'in_progress', weight: 3 },
   ])
@@ -177,23 +214,23 @@ function buildScheduleAndOrders(
     const productsForGroup = products.filter((p) => p.techMap.machineGroupId === machine.groupId)
     if (productsForGroup.length === 0) continue
 
-    let cursor = rangeStart + faker.number.int({ min: 0, max: 6 }) * HOUR
+    let cursor = rangeStart + randomInt({ min: 0, max: 6 }) * HOUR
 
     for (let i = 0; i < maxAssignmentsPerMachine && cursor < rangeEnd; i++) {
-      const gapHours = faker.helpers.weightedArrayElement([
+      const gapHours = weightedArrayElement([
         { value: 0, weight: 6 },
-        { value: faker.number.int({ min: 1, max: 3 }), weight: 2 },
-        { value: faker.number.int({ min: 4, max: 10 }), weight: 1 },
+        { value: randomInt({ min: 1, max: 3 }), weight: 2 },
+        { value: randomInt({ min: 4, max: 10 }), weight: 1 },
       ])
       cursor += gapHours * HOUR
       if (cursor >= rangeEnd) break
 
-      const durationHours = faker.number.int({ min: 2, max: 10 })
+      const durationHours = randomInt({ min: 2, max: 10 })
       const startAt = new Date(cursor)
       const endAt = new Date(cursor + durationHours * HOUR)
       cursor = endAt.getTime()
 
-      const product = faker.helpers.arrayElement(productsForGroup)
+      const product = arrayElement(productsForGroup)
       const quantity = Math.round(durationHours * product.techMap.outputPerHour)
       const isPast = endAt.getTime() < now.getTime()
 
@@ -201,9 +238,9 @@ function buildScheduleAndOrders(
       const orderId = `o-${orderSeq}`
       const code = `WO-${startAt.getFullYear()}-${orderSeq}`
 
-      const deadlineSlackHours = faker.helpers.weightedArrayElement([
-        { value: faker.number.int({ min: 12, max: 72 }), weight: 6 },
-        { value: faker.number.int({ min: -12, max: 4 }), weight: 1 },
+      const deadlineSlackHours = weightedArrayElement([
+        { value: randomInt({ min: 12, max: 72 }), weight: 6 },
+        { value: randomInt({ min: -12, max: 4 }), weight: 1 },
       ])
       const deadline = new Date(endAt.getTime() + deadlineSlackHours * HOUR)
 
@@ -244,14 +281,14 @@ function buildDowntimeRules(machines: Machine[], now: Date): DowntimeRule[] {
   const rules: DowntimeRule[] = []
   let seq = 1
   for (const machine of machines) {
-    const count = machine.status === 'down' ? 2 : faker.number.int({ min: 0, max: 1 })
+    const count = machine.status === 'down' ? 2 : randomInt({ min: 0, max: 1 })
     for (let i = 0; i < count; i++) {
-      const dayOffset = faker.number.int({ min: -5, max: 30 })
-      const startHour = faker.number.int({ min: 0, max: 20 })
+      const dayOffset = randomInt({ min: -5, max: 30 })
+      const startHour = randomInt({ min: 0, max: 20 })
       const start = new Date(now)
       start.setDate(start.getDate() + dayOffset)
       start.setHours(startHour, 0, 0, 0)
-      const durationHours = faker.number.int({ min: 2, max: 6 })
+      const durationHours = randomInt({ min: 2, max: 6 })
       const end = new Date(start.getTime() + durationHours * HOUR)
       rules.push({
         id: `dt-${seq++}`,
@@ -259,7 +296,7 @@ function buildDowntimeRules(machines: Machine[], now: Date): DowntimeRule[] {
         recurrence: 'once',
         startAt: start.toISOString(),
         endAt: end.toISOString(),
-        reason: faker.helpers.arrayElement(DOWNTIME_REASONS),
+        reason: arrayElement(DOWNTIME_REASONS),
       })
     }
   }
@@ -271,7 +308,6 @@ let cached: MockDataset | null = null
 export function getMockDataset(): MockDataset {
   if (cached) return cached
 
-  faker.seed(42)
   const now = new Date()
   const workshops = buildWorkshops()
   const machines = buildMachines(workshops)
@@ -286,6 +322,7 @@ export function getMockDataset(): MockDataset {
     orders,
     assignments,
     downtimeRules,
+    holidayOverrides: new Set(),
     generatedAt: now.toISOString(),
   }
   return cached

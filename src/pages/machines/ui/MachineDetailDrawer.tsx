@@ -118,7 +118,7 @@ export function MachineDetailDrawer({ machine, workshopName, downtimeRules, onCl
               {createMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Добавить
             </Button>
-            {createMutation.isSuccess && <p className="mt-2 text-xs font-medium text-emerald-600">Добавлено — отразится в матрице планирования</p>}
+            {createMutation.isSuccess && <p className="mt-2 text-xs font-medium text-emerald-700">Добавлено — отразится в матрице планирования</p>}
           </div>
         </div>
       </div>

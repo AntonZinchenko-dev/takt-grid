@@ -36,6 +36,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5">
       <select
+        aria-label="Фильтр по цеху"
         value={store.filters.workshopId ?? 'all'}
         onChange={(e) => store.setWorkshopFilter(e.target.value === 'all' ? null : e.target.value)}
         className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-sm text-[var(--color-ink-900)]"
@@ -48,6 +49,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
         ))}
       </select>
       <select
+        aria-label="Фильтр по статусу заказа"
         value={store.filters.status ?? 'all'}
         onChange={(e) => store.setStatusFilter(e.target.value === 'all' ? null : (e.target.value as OrderStatus))}
         className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-sm text-[var(--color-ink-900)]"
@@ -60,6 +62,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
         ))}
       </select>
       <select
+        aria-label="Фильтр по приоритету"
         value={store.filters.priority ?? 'all'}
         onChange={(e) => store.setPriorityFilter(e.target.value === 'all' ? null : (e.target.value as OrderPriority))}
         className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-sm text-[var(--color-ink-900)]"
@@ -100,6 +103,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
             <CalendarIcon className="pointer-events-none h-3.5 w-3.5 text-[var(--color-ink-400)]" />
             <input
               type="date"
+              aria-label="Перейти к дате"
               value={toDateInputValue(store.anchorDate)}
               min={toDateInputValue(minDate)}
               max={toDateInputValue(maxDate)}

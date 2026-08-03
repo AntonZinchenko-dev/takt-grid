@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, HelpCircle, ClipboardList, Wrench, Package, X } from 'lucide-react'
+import { Search, ClipboardList, Wrench, Package, X } from 'lucide-react'
 import { useOrdersQuery } from '@/entities/order'
 import { useMachinesQuery } from '@/entities/machine'
 import { useProductsQuery } from '@/entities/product'
+import { NotificationsMenu } from './NotificationsMenu'
+import { HelpMenu } from './HelpMenu'
 
 interface TopHeaderProps {
   title: string
@@ -161,13 +163,8 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
 
       <div className="flex shrink-0 items-center gap-1.5">
         {actions}
-        <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]" aria-label="Уведомления">
-          <Bell className="h-[18px] w-[18px]" />
-          <span className="absolute right-1.5 top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-semibold text-white">3</span>
-        </button>
-        <button className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]" aria-label="Справка">
-          <HelpCircle className="h-[18px] w-[18px]" />
-        </button>
+        <NotificationsMenu />
+        <HelpMenu />
         <div className="ml-1 flex items-center gap-2.5 border-l border-[var(--color-border)] pl-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-xs font-semibold text-white">ИП</div>
           <div className="hidden leading-tight md:block">

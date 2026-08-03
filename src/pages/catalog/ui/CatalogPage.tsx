@@ -86,7 +86,7 @@ export function CatalogPage() {
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-ink-600)]">{product.techMap.outputPerHour}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-ink-600)]">{product.techMap.packageMultiplicity}</td>
                       <td className="px-4 py-2.5 text-right">
-                        <Button size="sm" variant="ghost" onClick={() => setEditing(product)}>
+                        <Button size="sm" variant="ghost" aria-label={`Редактировать техкарту «${product.name}»`} onClick={() => setEditing(product)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </td>

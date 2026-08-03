@@ -7,10 +7,10 @@ import { X, Loader2, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { GridStore } from '../../model/grid-store'
-import { findFirstAvailableSlot } from '../../lib/slot-search'
+import { findSlotCandidates } from '../../lib/slot-candidates'
 import { HOUR_MS, DAY_MS, dateToHourIndex } from '../../lib/timeline'
 import { OccupancyIndex } from '@/shared/lib/occupancy-index'
-import type { Machine } from '@/entities/machine'
+import type { Machine, DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
 import { useCreateOrderMutation, priorityLabel, type OrderPriority } from '@/entities/order'
@@ -39,10 +39,11 @@ interface OrderWizardProps {
   store: GridStore
   products: Product[]
   machines: Machine[]
+  downtimeByMachine?: Map<string, DowntimeRule[]>
   onClose: () => void
 }
 
-export const OrderWizard = observer(function OrderWizard({ store, products, machines, onClose }: OrderWizardProps) {
+export const OrderWizard = observer(function OrderWizard({ store, products, machines, downtimeByMachine, onClose }: OrderWizardProps) {
   const now = useMemo(() => new Date(), [])
   const defaultDeadline = useMemo(() => format(new Date(now.getTime() + 7 * DAY_MS), 'yyyy-MM-dd'), [now])
 
@@ -86,20 +87,18 @@ export const OrderWizard = observer(function OrderWizard({ store, products, mach
 
   const candidates = useMemo<Candidate[]>(() => {
     if (!techMap || requiredHours <= 0) return []
-    const requiredMs = requiredHours * HOUR_MS
-    const results: Candidate[] = []
-    for (const machine of groupMachines) {
-      const busy = occupancyIndex.findOverlapping(machine.id, now.getTime(), searchEndMs)
-      const slot = findFirstAvailableSlot(busy, now.getTime(), searchEndMs, requiredMs)
-      if (slot) {
-        results.push({ machine, start: slot.start, end: slot.end, fitsDeadline: deadlineDate ? slot.end <= deadlineDate.getTime() : true })
-      }
-    }
-    results.sort((a, b) => (a.fitsDeadline !== b.fitsDeadline ? (a.fitsDeadline ? -1 : 1) : a.start - b.start))
-    return results.slice(0, 5)
+    return findSlotCandidates({
+      groupMachines,
+      occupancyIndex,
+      downtimeByMachine,
+      searchStart: now.getTime(),
+      searchEnd: searchEndMs,
+      requiredMs: requiredHours * HOUR_MS,
+      deadlineMs: deadlineDate ? deadlineDate.getTime() : null,
+    })
     // deadlineDate меняется по ссылке каждый рендер — сравниваем по значению через getTime()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [techMap, requiredHours, groupMachines, occupancyIndex, now, searchEndMs, deadlineDate?.getTime()])
+  }, [techMap, requiredHours, groupMachines, occupancyIndex, downtimeByMachine, now, searchEndMs, deadlineDate?.getTime()])
 
   const [selectedIndex, setSelectedIndex] = useState(0)
   useEffect(() => setSelectedIndex(0), [productId])
@@ -191,8 +190,9 @@ export const OrderWizard = observer(function OrderWizard({ store, products, mach
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Продукт</label>
+            <label htmlFor="order-product" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Продукт</label>
             <select
+              id="order-product"
               {...register('productId')}
               className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
             >
@@ -225,8 +225,9 @@ export const OrderWizard = observer(function OrderWizard({ store, products, mach
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Количество, шт.</label>
+              <label htmlFor="order-quantity" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Количество, шт.</label>
               <input
+                id="order-quantity"
                 type="number"
                 {...register('quantity', { valueAsNumber: true })}
                 className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
@@ -234,8 +235,9 @@ export const OrderWizard = observer(function OrderWizard({ store, products, mach
               {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity.message}</p>}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Срок</label>
+              <label htmlFor="order-deadline" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Срок</label>
               <input
+                id="order-deadline"
                 type="date"
                 {...register('deadline')}
                 className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
@@ -245,8 +247,9 @@ export const OrderWizard = observer(function OrderWizard({ store, products, mach
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Приоритет</label>
+            <label htmlFor="order-priority" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Приоритет</label>
             <select
+              id="order-priority"
               {...register('priority')}
               className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
             >

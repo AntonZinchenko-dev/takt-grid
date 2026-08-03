@@ -218,6 +218,27 @@ export const handlers = [
     return HttpResponse.json(rule, { status: 201 })
   }),
 
+  /** Дни, вручную переключённые относительно дефолтного статуса будни/выходной (вкладка "Календарь"). */
+  http.get('/api/holidays', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(Array.from(getMockDataset().holidayOverrides))
+  }),
+
+  http.post('/api/holidays/toggle', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as { date: string }
+    const dataset = getMockDataset()
+    let overridden: boolean
+    if (dataset.holidayOverrides.has(body.date)) {
+      dataset.holidayOverrides.delete(body.date)
+      overridden = false
+    } else {
+      dataset.holidayOverrides.add(body.date)
+      overridden = true
+    }
+    return HttpResponse.json({ date: body.date, overridden })
+  }),
+
   /** Редактирование техкарты со страницы "Продукция и техкарты". */
   http.patch('/api/products/:id/tech-map', async ({ request, params }) => {
     await simulateNetwork()

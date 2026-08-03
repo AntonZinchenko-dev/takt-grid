@@ -45,7 +45,7 @@ export function SidebarNav() {
         {!collapsed && (
           <div className="min-w-0">
             <p className="truncate text-[15px] font-semibold leading-tight text-[var(--color-ink-900)]">TaktGrid</p>
-            <p className="truncate text-[11px] leading-tight text-[var(--color-ink-400)]">Производственное планирование</p>
+            <p className="truncate text-[11px] leading-tight text-[var(--color-ink-600)]">Производственное планирование</p>
           </div>
         )}
       </div>

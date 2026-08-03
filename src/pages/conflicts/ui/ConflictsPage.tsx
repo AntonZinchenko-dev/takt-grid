@@ -13,6 +13,17 @@ import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
 
 const DAY_MS = 86_400_000
 
+/**
+ * Ссылка на шахматку с открытием карточки конфликта. Параметры одноразовые — SchedulePage
+ * вычищает их из URL сразу после прочтения, поэтому используем query-строку, а не router state:
+ * state намертво прилипает к записи истории, и возврат на неё (кнопка "назад") открывал бы
+ * уже решённый конфликт заново.
+ */
+function matrixResolveLink(assignmentId: string, jumpIso: string, reason: string): string {
+  const params = new URLSearchParams({ resolve: assignmentId, jump: jumpIso, reason })
+  return `/matrix?${params.toString()}`
+}
+
 export function ConflictsPage() {
   const machinesQuery = useMachinesQuery()
   const downtimeQuery = useDowntimeRulesQuery()
@@ -27,7 +38,7 @@ export function ConflictsPage() {
   const ordersById = useMemo(() => new Map((ordersQuery.data ?? []).map((o) => [o.id, o])), [ordersQuery.data])
 
   const downtimeConflicts = useMemo(() => {
-    const results: Array<{ id: string; machineName: string; orderCode: string; reason: string; startAt: string; endAt: string }> = []
+    const results: Array<{ id: string; assignmentId: string; machineName: string; orderCode: string; reason: string; startAt: string; endAt: string }> = []
     for (const rule of downtimeQuery.data ?? []) {
       const ruleStart = new Date(rule.startAt).getTime()
       const ruleEnd = new Date(rule.endAt).getTime()
@@ -40,6 +51,7 @@ export function ConflictsPage() {
           const order = ordersById.get(assignment.orderId)
           results.push({
             id: `${rule.id}-${assignment.id}`,
+            assignmentId: assignment.id,
             machineName: machine?.name ?? rule.machineId,
             orderCode: order?.code ?? assignment.orderId,
             reason: rule.reason,
@@ -51,6 +63,8 @@ export function ConflictsPage() {
     }
     return results.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
   }, [downtimeQuery.data, assignmentsQuery.data, machinesById, ordersById])
+
+  const assignmentByOrderId = useMemo(() => new Map((assignmentsQuery.data ?? []).map((a) => [a.orderId, a])), [assignmentsQuery.data])
 
   const riskyOrders = useMemo(
     () => (ordersQuery.data ?? []).filter((o) => o.status === 'at_risk' || o.status === 'overdue').sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
@@ -94,7 +108,7 @@ export function ConflictsPage() {
                       </div>
                       <div className="flex items-center gap-3 text-xs text-[var(--color-ink-600)]">
                         <span>{format(new Date(c.startAt), 'd MMM, HH:mm', { locale: ru })}</span>
-                        <Link to="/matrix" state={{ jumpToIso: c.startAt }}>
+                        <Link to={matrixResolveLink(c.assignmentId, c.startAt, c.reason)}>
                           <Button size="sm" variant="secondary">
                             Открыть
                           </Button>
@@ -118,7 +132,9 @@ export function ConflictsPage() {
               </CardHeader>
               <CardBody>
                 <div className="space-y-1.5">
-                  {riskyOrders.slice(0, 30).map((order) => (
+                  {riskyOrders.slice(0, 30).map((order) => {
+                    const assignment = assignmentByOrderId.get(order.id)
+                    return (
                     <div key={order.id} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm">
                       <span className="flex items-center gap-2">
                         <span className="font-medium text-[var(--color-ink-900)]">{order.code}</span>
@@ -129,14 +145,23 @@ export function ConflictsPage() {
                           {priorityLabel(order.priority)}
                         </Badge>
                         <span className="text-[var(--color-ink-600)]">{format(new Date(order.deadline), 'd MMM yyyy', { locale: ru })}</span>
-                        <Link to="/matrix" state={{ jumpToIso: order.deadline }}>
-                          <Button size="sm" variant="secondary">
-                            Открыть
-                          </Button>
-                        </Link>
+                        {assignment ? (
+                          <Link to={matrixResolveLink(assignment.id, assignment.startAt, 'риск срыва дедлайна')}>
+                            <Button size="sm" variant="secondary">
+                              Открыть
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Link to="/matrix" state={{ jumpToIso: order.deadline }}>
+                            <Button size="sm" variant="secondary">
+                              Открыть
+                            </Button>
+                          </Link>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                   {riskyOrders.length === 0 && <p className="py-4 text-center text-sm text-[var(--color-ink-400)]">Угроз не найдено</p>}
                 </div>
               </CardBody>

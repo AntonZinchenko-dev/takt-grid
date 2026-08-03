@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchJson, ApiError } from '@/shared/api'
 import type { ScheduleAssignment } from '../model/types'
 
-export function useAssignmentsWindowQuery(fromIso: string, toIso: string) {
+export function useAssignmentsWindowQuery(fromIso: string, toIso: string, enabled = true) {
   return useQuery({
     queryKey: ['assignments', fromIso, toIso],
     queryFn: () => fetchJson<ScheduleAssignment[]>(`/api/assignments?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`),
     placeholderData: (prev) => prev,
+    enabled,
   })
 }
 

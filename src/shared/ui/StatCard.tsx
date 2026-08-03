@@ -28,7 +28,7 @@ export function StatCard({ icon, iconBg, iconColor, label, value, trend }: StatC
             <p
               className={cn(
                 'mt-1 inline-flex items-center gap-1 text-xs font-medium',
-                trend.positive === false ? 'text-red-600' : 'text-emerald-600',
+                trend.positive === false ? 'text-red-700' : 'text-emerald-700',
               )}
             >
               <TrendIcon className="h-3.5 w-3.5" />

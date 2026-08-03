@@ -11,24 +11,29 @@
   --color-brand-600: #2563eb;
   --color-brand-700: #1d4ed8;
 
-  /* Нейтральная шкала интерфейса (фон/бордеры/текст) */
+  /* Нейтральная шкала интерфейса (фон/бордеры/текст).
+     ink-400 — было #94a3b8 (2.56:1 на белом, ниже WCAG AA 4.5:1 для текста);
+     используется как цвет текста в ~25 местах, так что правим на уровне токена. */
   --color-canvas: #f8fafc;
   --color-surface: #ffffff;
   --color-border: #e2e8f0;
   --color-ink-900: #0f172a;
   --color-ink-600: #475569;
-  --color-ink-400: #94a3b8;
+  --color-ink-400: #64748b;
 
-  /* Приоритеты заказа — единая палитра для бейджей, точек статуса и блоков в матрице */
-  --color-priority-low: #16a34a;
+  /* Приоритеты заказа — единая палитра для бейджей, точек статуса и блоков в матрице.
+     Оттенки текста на 1-2 шага темнее стандартных (напр. green-600), чем сами акцентные
+     цвета выглядели бы "чисто" — иначе на своих -bg подложках контраст не дотягивает
+     до WCAG AA 4.5:1 (было 3.0–4.3:1, см. axe/Lighthouse color-contrast). */
+  --color-priority-low: #166534;
   --color-priority-low-bg: #dcfce7;
-  --color-priority-normal: #2563eb;
+  --color-priority-normal: #1d4ed8;
   --color-priority-normal-bg: #dbeafe;
-  --color-priority-high: #ea580c;
+  --color-priority-high: #9a3412;
   --color-priority-high-bg: #ffedd5;
-  --color-priority-critical: #dc2626;
+  --color-priority-critical: #b91c1c;
   --color-priority-critical-bg: #fee2e2;
-  --color-priority-done: #64748b;
+  --color-priority-done: #475569;
   --color-priority-done-bg: #f1f5f9;
 }
 

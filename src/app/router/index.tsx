@@ -1,14 +1,16 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { RootLayout } from '@/app/layout/RootLayout'
 import { DashboardPage } from '@/pages/dashboard'
-import { SchedulePage } from '@/pages/schedule-matrix'
-import { OrdersPage } from '@/pages/orders'
-import { MachinesPage } from '@/pages/machines'
-import { CatalogPage } from '@/pages/catalog'
-import { ConflictsPage } from '@/pages/conflicts'
-import { AnalyticsPage } from '@/pages/analytics'
-import { CalendarPage } from '@/pages/calendar'
-import { SettingsPage } from '@/pages/settings'
+import {
+  SchedulePage,
+  OrdersPage,
+  MachinesPage,
+  CatalogPage,
+  ConflictsPage,
+  AnalyticsPage,
+  CalendarPage,
+  SettingsPage,
+} from './lazy-pages'
 
 export const router = createBrowserRouter([
   {

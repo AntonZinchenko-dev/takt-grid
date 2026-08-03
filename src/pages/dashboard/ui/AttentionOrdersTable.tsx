@@ -29,7 +29,9 @@ export function AttentionOrdersTable({ orders }: { orders: DashboardSummary['att
                 <th className="pb-2 pr-3">Дедлайн</th>
                 <th className="pb-2 pr-3">Группа станков</th>
                 <th className="pb-2 pr-3">Причина</th>
-                <th className="pb-2" />
+                <th className="pb-2">
+                  <span className="sr-only">Действие</span>
+                </th>
               </tr>
             </thead>
             <tbody>

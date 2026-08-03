@@ -119,7 +119,7 @@ export function SettingsPage() {
               <Button variant="primary" onClick={() => setSaved(true)}>
                 Сохранить
               </Button>
-              {saved && <p className="text-xs font-medium text-emerald-600">Сохранено (в рамках сессии)</p>}
+              {saved && <p className="text-xs font-medium text-emerald-700">Сохранено (в рамках сессии)</p>}
             </CardBody>
           </Card>
 

@@ -123,10 +123,11 @@ export const BulkEditPanel = observer(function BulkEditPanel({
             ))}
           </div>
 
-          <label className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">
+          <label htmlFor="bulk-edit-value" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">
             {mode === 'relative' ? 'Изменение, %' : 'Новое количество, шт.'}
           </label>
           <input
+            id="bulk-edit-value"
             type="number"
             value={value}
             onChange={(e) => setValue(Number(e.target.value))}

@@ -4,10 +4,14 @@ import type { GroupLoadRow } from '../model/types'
 
 function heatCellStyle(percent: number): { backgroundColor: string; color: string } {
   const clamped = Math.max(0, Math.min(100, percent))
-  const alpha = 0.08 + (clamped / 100) * 0.85
+  // Альфа ограничена 0.8: при более насыщенной заливке текст ink-900 поверх неё
+  // не дотягивает до WCAG AA 4.5:1, а переключение на белый давало разрыв (белый
+  // сам проходил контраст только при заливке 97%+, т.е. почти всегда не проходил
+  // ни один из двух цветов текста).
+  const alpha = 0.08 + (clamped / 100) * 0.72
   return {
     backgroundColor: `rgba(37, 99, 235, ${alpha.toFixed(2)})`,
-    color: clamped > 55 ? '#ffffff' : 'var(--color-ink-900)',
+    color: 'var(--color-ink-900)',
   }
 }
 

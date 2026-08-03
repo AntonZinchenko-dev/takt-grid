@@ -45,7 +45,7 @@ export function TodayMiniGantt({ machines }: { machines: DashboardSummary['today
 
             <div className="relative flex-1 space-y-2">
               <div className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-500" style={{ left: `${nowPercent}%` }}>
-                <span className="absolute -top-5 -translate-x-1/2 whitespace-nowrap rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="absolute -top-5 -translate-x-1/2 whitespace-nowrap rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
                   Сейчас
                 </span>
               </div>

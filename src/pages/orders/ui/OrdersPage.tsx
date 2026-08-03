@@ -53,6 +53,7 @@ export function OrdersPage() {
               />
             </div>
             <select
+              aria-label="Фильтр по статусу заказа"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value as OrderStatus | 'all')
@@ -68,6 +69,7 @@ export function OrdersPage() {
               ))}
             </select>
             <select
+              aria-label="Фильтр по приоритету"
               value={priority}
               onChange={(e) => {
                 setPriority(e.target.value as OrderPriority | 'all')

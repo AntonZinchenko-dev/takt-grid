@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { Loader2 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
@@ -40,8 +40,15 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null)
+  const [conflictResolve, setConflictResolve] = useState<{ reason?: string } | null>(null)
   const data = useScheduleData(store.anchorDate)
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const closeDetailDrawer = () => {
+    setOpenAssignmentId(null)
+    setConflictResolve(null)
+  }
 
   const workshopsById = new Map(workshops.map((w) => [w.id, w]))
   const machinesById = new Map(machines.map((m) => [m.id, m]))
@@ -50,15 +57,42 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const openMachine = openAssignment ? machinesById.get(openAssignment.machineId) : undefined
   const openWorkshop = openMachine ? workshopsById.get(openMachine.workshopId) : undefined
 
-  // Переход из "Конфликтов"/"Дашборда" сразу к нужному моменту в матрице
+  // Переход из "Дашборда"/поиска сразу к нужному моменту в матрице.
+  // Зависим от location.key (не []): navigate() к тому же /matrix даёт новый key,
+  // так что переход срабатывает и если пользователь уже был на этой странице.
   useEffect(() => {
     const state = location.state as { jumpToIso?: string } | null
     if (state?.jumpToIso) store.jumpToDate(new Date(state.jumpToIso))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location.key])
+
+  // Переход из "Конфликтов" — через query-параметры, не через location.state: state навсегда
+  // прилипает к конкретной записи истории, так что при возврате на неё (кнопка "назад")
+  // конфликт открывался бы заново, даже если он давно решён. Параметры вычищаем из URL
+  // сразу после прочтения — они одноразовые.
+  useEffect(() => {
+    const resolveAssignmentId = searchParams.get('resolve')
+    if (!resolveAssignmentId) return
+    const jumpToIso = searchParams.get('jump')
+    const reason = searchParams.get('reason')
+    if (jumpToIso) store.jumpToDate(new Date(jumpToIso))
+    setOpenAssignmentId(resolveAssignmentId)
+    setConflictResolve({ reason: reason ?? undefined })
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('resolve')
+        next.delete('jump')
+        next.delete('reason')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <main className="flex flex-1 flex-col overflow-hidden">
       <Toolbar store={store} workshops={workshops} onCreateOrder={() => setWizardOpen(true)} />
       <ScheduleGrid
         store={store}
@@ -66,7 +100,10 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
         assignmentsById={data.assignmentsById}
         ordersById={data.ordersById}
         downtimeByMachine={data.downtimeByMachine}
-        onOpenOrderDetail={setOpenAssignmentId}
+        onOpenOrderDetail={(id) => {
+          setConflictResolve(null)
+          setOpenAssignmentId(id)
+        }}
       />
       <SelectionPanel
         store={store}
@@ -85,16 +122,24 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
           onClose={() => setBulkEditOpen(false)}
         />
       )}
-      {wizardOpen && <OrderWizard store={store} products={data.products} machines={machines} onClose={() => setWizardOpen(false)} />}
+      {wizardOpen && (
+        <OrderWizard store={store} products={data.products} machines={machines} downtimeByMachine={data.downtimeByMachine} onClose={() => setWizardOpen(false)} />
+      )}
       {openAssignment && openOrder && openMachine && (
         <OrderDetailDrawer
+          store={store}
           order={openOrder}
           assignment={openAssignment}
           machine={openMachine}
           workshopName={openWorkshop?.name ?? '—'}
-          onClose={() => setOpenAssignmentId(null)}
+          machines={machines}
+          products={data.products}
+          downtimeByMachine={data.downtimeByMachine}
+          autoResolve={Boolean(conflictResolve)}
+          conflictReason={conflictResolve?.reason}
+          onClose={closeDetailDrawer}
         />
       )}
-    </div>
+    </main>
   )
 })
