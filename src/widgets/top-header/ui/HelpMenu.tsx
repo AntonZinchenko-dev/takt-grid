@@ -14,6 +14,14 @@ const SECTIONS = [
   { to: '/settings', label: 'Настройки', icon: Settings, description: 'Рабочий календарь, роли, пороги уведомлений' },
 ] as const
 
+const MATRIX_LEGEND = [
+  { label: 'Низкий приоритет', color: 'var(--color-priority-low)' },
+  { label: 'Средний приоритет', color: 'var(--color-priority-normal)' },
+  { label: 'Высокий приоритет', color: 'var(--color-priority-high)' },
+  { label: 'Критический', color: 'var(--color-priority-critical)' },
+  { label: 'Выполнен', color: 'var(--color-priority-done)' },
+] as const
+
 const TIPS: Record<string, string> = {
   '/': 'В таблице «Заказы, требующие внимания» кнопка «Открыть» сразу переносит в нужный момент матрицы планирования.',
   '/matrix': 'Перетащите блок заказа на другой станок или время, чтобы перенести его — Esc отменяет перенос. Потяните по пустой области грида, чтобы выделить несколько заказов для массового редактирования количества.',
@@ -58,6 +66,31 @@ export function HelpMenu() {
             <div className="flex items-start gap-2 border-b border-[var(--color-border)] bg-[var(--color-canvas)] px-3.5 py-2.5">
               <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-brand-600)]" />
               <p className="text-xs text-[var(--color-ink-600)]">{tip}</p>
+            </div>
+          )}
+
+          {location.pathname === '/matrix' && (
+            <div className="border-b border-[var(--color-border)] px-3.5 py-2.5">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-400)]">Условные обозначения</p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--color-ink-600)]">
+                {MATRIX_LEGEND.map((item) => (
+                  <span key={item.label} className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: item.color }} />
+                    {item.label}
+                  </span>
+                ))}
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-sm border border-[var(--color-ink-400)]"
+                    style={{ backgroundImage: 'repeating-linear-gradient(135deg, var(--color-ink-400) 0, var(--color-ink-400) 1.5px, transparent 1.5px, transparent 4px)' }}
+                  />
+                  Простой / ТО
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-0.5 w-3 shrink-0 bg-red-500" />
+                  Текущее время
+                </span>
+              </div>
             </div>
           )}
 

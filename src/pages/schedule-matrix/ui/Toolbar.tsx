@@ -1,5 +1,5 @@
 import { observer } from 'mobx-react-lite'
-import { CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarIcon, ChevronLeft, ChevronRight, Plus, Printer } from 'lucide-react'
 import type { GridStore } from '../model/grid-store'
 import { ZOOM_LABEL, RANGE_START_DAYS, RANGE_END_DAYS, DAY_MS, startOfDay, type ZoomLevel } from '../lib/timeline'
 import type { Workshop } from '@/entities/workshop'
@@ -20,9 +20,10 @@ interface ToolbarProps {
   store: GridStore
   workshops: Workshop[]
   onCreateOrder: () => void
+  onExportShift: () => void
 }
 
-export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrder }: ToolbarProps) {
+export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrder, onExportShift }: ToolbarProps) {
   const today = startOfDay(new Date())
   const minDate = new Date(today.getTime() + RANGE_START_DAYS * DAY_MS)
   const maxDate = new Date(today.getTime() + (RANGE_END_DAYS - 1) * DAY_MS)
@@ -126,6 +127,11 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
         <Button size="sm" variant="secondary" onClick={() => store.jumpToDate(new Date())}>
           <CalendarIcon className="h-3.5 w-3.5" />
           Сегодня
+        </Button>
+
+        <Button size="sm" variant="secondary" onClick={onExportShift}>
+          <Printer className="h-3.5 w-3.5" />
+          Печать задания
         </Button>
 
         <Button size="sm" variant="primary" onClick={onCreateOrder}>

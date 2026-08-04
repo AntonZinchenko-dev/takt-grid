@@ -90,3 +90,20 @@
     border-radius: 9999px;
   }
 }
+
+/* Печать сменного задания (см. ShiftExportDrawer) — прячем всё, кроме .print-area,
+   и разворачиваем её в обычный поток документа поверх любых fixed/overflow родителей. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+}

@@ -9,7 +9,6 @@ import type { Order, OrderStatus } from '@/entities/order'
 import { statusLabel, useCreateOrderMutation, useDeleteOrderMutation } from '@/entities/order'
 import { Button } from '@/shared/ui/Button'
 import { ApiError } from '@/shared/api'
-import { Legend } from './Legend'
 import { Minimap } from './Minimap'
 
 const STATUS_DOT: Record<OrderStatus, string> = {
@@ -127,14 +126,8 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
 
   if (!selection || !summary) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
-        <p className="text-xs text-[var(--color-ink-600)]">
-          <span className="font-medium text-[var(--color-ink-900)]">Выделение:</span> перетащите мышью по ячейкам одного или нескольких станков
-        </p>
-        <div className="flex items-center gap-6">
-          <Legend />
-          <Minimap store={store} />
-        </div>
+      <div className="flex items-center justify-center border-t border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-3">
+        <Minimap store={store} />
       </div>
     )
   }
@@ -259,8 +252,7 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
         </div>
       </div>
 
-      <div className="space-y-3">
-        <Legend />
+      <div className="flex items-center">
         <Minimap store={store} />
       </div>
     </div>

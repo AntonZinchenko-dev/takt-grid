@@ -17,6 +17,7 @@ import { BulkEditPanel } from './BulkEditPanel'
 import { OrderWizard } from './wizard/OrderWizard'
 import { ReassignOrderWizard } from './wizard/ReassignOrderWizard'
 import { OrderDetailDrawer } from './OrderDetailDrawer'
+import { ShiftExportDrawer } from './ShiftExportDrawer'
 
 export function SchedulePage() {
   const workshopsQuery = useWorkshopsQuery()
@@ -44,6 +45,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null)
   const [conflictResolve, setConflictResolve] = useState<{ reason?: string } | null>(null)
   const [reassignOrderId, setReassignOrderId] = useState<string | null>(null)
+  const [shiftExportOpen, setShiftExportOpen] = useState(false)
   const data = useScheduleData(store.anchorDate)
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -114,7 +116,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      <Toolbar store={store} workshops={workshops} onCreateOrder={() => setWizardOpen(true)} />
+      <Toolbar store={store} workshops={workshops} onCreateOrder={() => setWizardOpen(true)} onExportShift={() => setShiftExportOpen(true)} />
       <ScheduleGrid
         store={store}
         occupancyIndex={data.occupancyIndex}
@@ -170,6 +172,16 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
           machines={machines}
           downtimeByMachine={data.downtimeByMachine}
           onClose={() => setReassignOrderId(null)}
+        />
+      )}
+      {shiftExportOpen && (
+        <ShiftExportDrawer
+          machines={machines}
+          workshops={workshops}
+          ordersById={data.ordersById}
+          downtimeByMachine={data.downtimeByMachine}
+          defaultDate={store.anchorDate}
+          onClose={() => setShiftExportOpen(false)}
         />
       )}
     </main>
