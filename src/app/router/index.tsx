@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { RootLayout } from '@/app/layout/RootLayout'
 import { DashboardPage } from '@/pages/dashboard'
+import { RequireAuth } from './RequireAuth'
 import {
   SchedulePage,
   OrdersPage,
@@ -10,12 +11,19 @@ import {
   AnalyticsPage,
   CalendarPage,
   SettingsPage,
+  ProfilePage,
+  LoginPage,
   NotFoundPage,
 } from './lazy-pages'
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
-    element: <RootLayout />,
+    element: (
+      <RequireAuth>
+        <RootLayout />
+      </RequireAuth>
+    ),
     children: [
       { path: '/', element: <DashboardPage /> },
       { path: '/matrix', element: <SchedulePage /> },
@@ -26,6 +34,7 @@ export const router = createBrowserRouter([
       { path: '/analytics', element: <AnalyticsPage /> },
       { path: '/calendar', element: <CalendarPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/profile', element: <ProfilePage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

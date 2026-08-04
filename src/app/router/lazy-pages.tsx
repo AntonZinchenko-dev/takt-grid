@@ -24,6 +24,12 @@ export const CalendarPage = lazy(() =>
 export const SettingsPage = lazy(() =>
   import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
 )
+export const ProfilePage = lazy(() =>
+  import('@/pages/profile').then((m) => ({ default: m.ProfilePage })),
+)
+export const LoginPage = lazy(() =>
+  import('@/pages/login').then((m) => ({ default: m.LoginPage })),
+)
 export const NotFoundPage = lazy(() =>
   import('@/pages/not-found').then((m) => ({ default: m.NotFoundPage })),
 )

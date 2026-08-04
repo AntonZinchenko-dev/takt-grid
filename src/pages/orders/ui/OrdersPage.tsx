@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Loader2, Search } from 'lucide-react'
 import { format } from 'date-fns'
@@ -28,13 +28,22 @@ const PAGE_SIZE = 20
 export function OrdersPage() {
   // Переход с дашборда ("Быстрые фильтры") — сразу применить статус/приоритет.
   const location = useLocation()
-  const incoming = location.state as { initialStatus?: OrderStatus; initialPriority?: OrderPriority } | null
+  const incoming = location.state as { initialStatus?: OrderStatus; initialPriority?: OrderPriority; openReportOrder?: Order } | null
 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<OrderStatus | 'all'>(incoming?.initialStatus ?? 'all')
   const [priority, setPriority] = useState<OrderPriority | 'all'>(incoming?.initialPriority ?? 'all')
   const [page, setPage] = useState(1)
   const [reportOrder, setReportOrder] = useState<Order | null>(null)
+
+  // Переход из карточки заказа в матрице (клик по номеру) — сразу открыть отчёт по заказу.
+  const handledReportKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    const state = location.state as { openReportOrder?: Order } | null
+    if (!state?.openReportOrder || handledReportKeyRef.current === location.key) return
+    handledReportKeyRef.current = location.key
+    setReportOrder(state.openReportOrder)
+  }, [location.key, location.state])
 
   const query = useOrdersPageQuery({
     search: search || undefined,

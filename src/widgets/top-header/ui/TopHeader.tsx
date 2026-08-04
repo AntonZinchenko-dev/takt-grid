@@ -6,6 +6,7 @@ import { useMachinesQuery } from '@/entities/machine'
 import { useProductsQuery } from '@/entities/product'
 import { NotificationsMenu } from './NotificationsMenu'
 import { HelpMenu } from './HelpMenu'
+import { ProfileMenu } from './ProfileMenu'
 
 interface TopHeaderProps {
   title: string
@@ -165,13 +166,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
         {actions}
         <NotificationsMenu />
         <HelpMenu />
-        <div className="ml-1 flex items-center gap-2.5 border-l border-[var(--color-border)] pl-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-brand-600)] text-xs font-semibold text-white">ИП</div>
-          <div className="hidden leading-tight md:block">
-            <p className="text-sm font-medium text-[var(--color-ink-900)]">Иван Петров</p>
-            <p className="text-xs text-[var(--color-ink-600)]">Планировщик</p>
-          </div>
-        </div>
+        <ProfileMenu />
       </div>
     </header>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { X, Search, Loader2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -59,6 +60,7 @@ export function OrderDetailDrawer({
   conflictReason,
   onClose,
 }: OrderDetailDrawerProps) {
+  const navigate = useNavigate()
   const durationHours = Math.round((new Date(assignment.endAt).getTime() - new Date(assignment.startAt).getTime()) / 3_600_000)
   const [resolveOpen, setResolveOpen] = useState(autoResolve)
 
@@ -203,7 +205,14 @@ export function OrderDetailDrawer({
       <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-[var(--color-ink-900)]">{order.code}</h2>
+            <button
+              type="button"
+              onClick={() => navigate('/orders', { state: { openReportOrder: order } })}
+              title="Открыть детализацию заказа"
+              className="text-base font-semibold text-[var(--color-ink-900)] hover:text-[var(--color-brand-600)] hover:underline"
+            >
+              {order.code}
+            </button>
             <p className="text-xs text-[var(--color-ink-600)]">{order.productName}</p>
           </div>
           <button onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">

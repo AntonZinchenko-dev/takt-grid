@@ -99,7 +99,7 @@ const GROUPS: GroupDef[] = [
   { id: 'packaging', name: 'Упаковка', workshopIndex: 3, namePrefixes: ['Упаковочная линия UP', 'Фасовочный автомат FA'], capacityRange: [60, 150] },
 ]
 
-const MACHINES_PER_GROUP = 9
+const MACHINES_PER_GROUP = 2
 
 const PRODUCT_DEFS: Array<{ name: string; groupId: string; outputPerHour: number; packageMultiplicity: number }> = [
   { name: 'Корпус насоса', groupId: 'milling', outputPerHour: 12, packageMultiplicity: 6 },
@@ -225,15 +225,16 @@ function buildScheduleAndOrders(
     let cursor = rangeStart + randomInt({ min: 0, max: 6 }) * HOUR
 
     for (let i = 0; i < maxAssignmentsPerMachine && cursor < rangeEnd; i++) {
+      // Заметные окна простоя между заказами — по паре задач в день на станок, а не сплошная стена блоков.
       const gapHours = weightedArrayElement([
-        { value: 0, weight: 6 },
-        { value: randomInt({ min: 1, max: 3 }), weight: 2 },
-        { value: randomInt({ min: 4, max: 10 }), weight: 1 },
+        { value: randomInt({ min: 2, max: 6 }), weight: 3 },
+        { value: randomInt({ min: 6, max: 14 }), weight: 3 },
+        { value: randomInt({ min: 14, max: 24 }), weight: 1 },
       ])
       cursor += gapHours * HOUR
       if (cursor >= rangeEnd) break
 
-      const durationHours = randomInt({ min: 2, max: 10 })
+      const durationHours = randomInt({ min: 2, max: 6 })
       const startAt = new Date(cursor)
       const endAt = new Date(cursor + durationHours * HOUR)
       cursor = endAt.getTime()

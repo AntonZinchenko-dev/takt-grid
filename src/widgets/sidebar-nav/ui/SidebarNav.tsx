@@ -9,6 +9,7 @@ import {
   BarChart3,
   CalendarDays,
   Settings,
+  UserCircle,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react'
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { to: '/conflicts', label: 'Конфликты', icon: AlertTriangle },
   { to: '/analytics', label: 'Аналитика', icon: BarChart3 },
   { to: '/calendar', label: 'Календарь', icon: CalendarDays },
+  { to: '/profile', label: 'Профиль', icon: UserCircle },
   { to: '/settings', label: 'Настройки', icon: Settings },
 ] as const
 
