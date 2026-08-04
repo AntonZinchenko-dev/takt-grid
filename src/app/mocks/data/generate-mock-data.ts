@@ -1,7 +1,7 @@
 import type { Workshop } from '@/entities/workshop'
 import type { Machine, MachineStatus, DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
-import type { Order, OrderPriority, OrderStatus } from '@/entities/order'
+import type { Order, OrderPriority, OrderStatus, OrderEvent } from '@/entities/order'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
 import { RANGE_START_DAYS, RANGE_END_DAYS } from '@/shared/lib/schedule-window'
 
@@ -62,9 +62,16 @@ export interface MockDataset {
   orders: Order[]
   assignments: ScheduleAssignment[]
   downtimeRules: DowntimeRule[]
+  /** История заказов (кто/что/когда) — см. entities/order/model/event-types. */
+  orderEvents: OrderEvent[]
   /** Даты (yyyy-MM-dd), вручную переключённые относительно дефолтного статуса будни/выходной. */
   holidayOverrides: Set<string>
   generatedAt: string
+}
+
+/** Пишет запись в историю заказа — вызывается из моков при каждой мутации, влияющей на заказ. */
+export function logOrderEvent(dataset: MockDataset, event: Omit<OrderEvent, 'id'>): void {
+  dataset.orderEvents.push({ id: `oe-${dataset.orderEvents.length + 1}-${Date.now()}`, ...event })
 }
 
 const WORKSHOP_DEFS = [
@@ -194,7 +201,7 @@ function buildScheduleAndOrders(
   machines: Machine[],
   products: Product[],
   now: Date,
-): { orders: Order[]; assignments: ScheduleAssignment[] } {
+): { orders: Order[]; assignments: ScheduleAssignment[]; events: OrderEvent[] } {
   const rangeStart = now.getTime() + RANGE_START_DAYS * DAY
   // TODO(temp/manual-testing): пусто с 6 числа текущего месяца — чтобы вручную
   // потыкать создание/перенос заказов на чистом холсте. Убрать перед демо/коммитом.
@@ -204,6 +211,7 @@ function buildScheduleAndOrders(
 
   const orders: Order[] = []
   const assignments: ScheduleAssignment[] = []
+  const events: OrderEvent[] = []
   let orderSeq = 1000
   // Safety net only — the real stop condition is cursor >= rangeEnd. Min step per
   // iteration is a 2h assignment with no gap, so rangeEnd is always reached well
@@ -271,10 +279,18 @@ function buildScheduleAndOrders(
         endAt: endAt.toISOString(),
         plannedQuantity: quantity,
       })
+
+      events.push({
+        id: `oe-seed-${orderSeq}`,
+        orderId,
+        type: 'created',
+        at: startAt.toISOString(),
+        machineName: machine.name,
+      })
     }
   }
 
-  return { orders, assignments }
+  return { orders, assignments, events }
 }
 
 function buildDowntimeRules(machines: Machine[], now: Date): DowntimeRule[] {
@@ -317,9 +333,11 @@ export function cascadeUnassign(
   machineId: string,
   windowStart: number,
   windowEnd: number,
-  options: { skipDone?: boolean } = {},
+  options: { skipDone?: boolean; reason?: string } = {},
 ): number {
   const skipDone = options.skipDone ?? true
+  const reason = options.reason ?? 'Снято с графика'
+  const machineName = dataset.machines.find((m) => m.id === machineId)?.name
   let affected = 0
   const ordersById = new Map(dataset.orders.map((o) => [o.id, o]))
   dataset.assignments = dataset.assignments.filter((a) => {
@@ -332,6 +350,7 @@ export function cascadeUnassign(
     if (skipDone && order?.status === 'done') return true
 
     if (order) order.status = 'needs_reassignment'
+    logOrderEvent(dataset, { orderId: a.orderId, type: 'unassigned', at: new Date().toISOString(), machineName, reason })
     affected += 1
     return false
   })
@@ -347,7 +366,7 @@ export function getMockDataset(): MockDataset {
   const workshops = buildWorkshops()
   const machines = buildMachines(workshops)
   const products = buildProducts()
-  const { orders, assignments } = buildScheduleAndOrders(machines, products, now)
+  const { orders, assignments, events } = buildScheduleAndOrders(machines, products, now)
   const downtimeRules = buildDowntimeRules(machines, now)
 
   cached = {
@@ -357,6 +376,7 @@ export function getMockDataset(): MockDataset {
     orders,
     assignments,
     downtimeRules,
+    orderEvents: events,
     holidayOverrides: new Set(),
     generatedAt: now.toISOString(),
   }

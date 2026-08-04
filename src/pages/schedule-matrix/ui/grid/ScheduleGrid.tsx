@@ -401,6 +401,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
                       status={order?.status ?? 'planned'}
                       plannedQuantity={assignment?.plannedQuantity}
                       actualQuantity={assignment?.actualQuantity}
+                      defectQuantity={assignment?.defectQuantity}
                       requiredGroupId={product?.techMap.machineGroupId ?? ''}
                       assignmentId={interval.id}
                       orderId={assignment?.orderId ?? ''}

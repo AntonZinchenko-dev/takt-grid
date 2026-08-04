@@ -20,6 +20,7 @@ interface OrderBlockProps {
   durationHours: number
   plannedQuantity?: number
   actualQuantity?: number
+  defectQuantity?: number
   requiredGroupId: string
   store: GridStore
   getContentPoint: (clientX: number, clientY: number) => { x: number; y: number }
@@ -45,6 +46,7 @@ export function OrderBlock({
   durationHours,
   plannedQuantity,
   actualQuantity,
+  defectQuantity,
   requiredGroupId,
   store,
   getContentPoint,
@@ -60,6 +62,8 @@ export function OrderBlock({
   const bg = done ? 'var(--color-priority-done-bg)' : priorityBgVar(priority)
   const showLabel = widthPx >= 46
   const resultPercent = actualQuantity !== undefined && plannedQuantity ? Math.round(Math.min(1, actualQuantity / plannedQuantity) * 100) : null
+  const defectPercent =
+    defectQuantity !== undefined && plannedQuantity ? Math.round(Math.min(1, defectQuantity / plannedQuantity) * 100) : null
 
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return
@@ -113,7 +117,7 @@ export function OrderBlock({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      title={`${code} · ${status === 'done' ? 'выполнен' : priority}${resultPercent !== null ? ` · результат ${resultPercent}%` : ''}`}
+      title={`${code} · ${status === 'done' ? 'выполнен' : priority}${resultPercent !== null ? ` · результат ${resultPercent}%` : ''}${defectPercent ? ` · брак ${defectPercent}%` : ''}`}
       className={cn(
         'pointer-events-auto absolute cursor-grab touch-none overflow-hidden rounded-md border px-2 text-left text-[11px] font-medium leading-tight transition-[filter,opacity] hover:brightness-95 active:cursor-grabbing',
         done && 'opacity-70',
@@ -132,6 +136,12 @@ export function OrderBlock({
       <span className="absolute inset-0" style={{ backgroundColor: bg }} />
       {resultPercent !== null && resultPercent > 0 && (
         <span className="absolute inset-y-0 left-0 transition-[width]" style={{ width: `${resultPercent}%`, backgroundColor: color, opacity: 0.4 }} />
+      )}
+      {defectPercent !== null && defectPercent > 0 && (
+        <span
+          className="absolute inset-y-0 transition-[left,width]"
+          style={{ left: `${resultPercent ?? 0}%`, width: `${defectPercent}%`, backgroundColor: 'var(--color-priority-critical)', opacity: 0.6 }}
+        />
       )}
       {showLabel && <span className="relative block truncate pt-1">{code}</span>}
     </button>

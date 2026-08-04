@@ -64,14 +64,25 @@ export function OrderDetailDrawer({
 
   const resultMutation = useUpdateAssignmentResultMutation()
   const [resultInput, setResultInput] = useState(assignment.actualQuantity !== undefined ? String(assignment.actualQuantity) : '')
+  const [defectInput, setDefectInput] = useState(assignment.defectQuantity !== undefined ? String(assignment.defectQuantity) : '0')
+  const [shiftNumber, setShiftNumber] = useState(assignment.shiftNumber ?? 1)
   useEffect(() => {
     setResultInput(assignment.actualQuantity !== undefined ? String(assignment.actualQuantity) : '')
-  }, [assignment.id, assignment.actualQuantity])
+    setDefectInput(assignment.defectQuantity !== undefined ? String(assignment.defectQuantity) : '0')
+    setShiftNumber(assignment.shiftNumber ?? 1)
+  }, [assignment.id, assignment.actualQuantity, assignment.defectQuantity, assignment.shiftNumber])
 
   const parsedResult = resultInput.trim() === '' ? null : Number(resultInput)
-  const resultIsValid = parsedResult !== null && !Number.isNaN(parsedResult) && parsedResult >= 0 && parsedResult <= assignment.plannedQuantity
-  const resultPercent = resultIsValid && assignment.plannedQuantity > 0 ? Math.round((parsedResult / assignment.plannedQuantity) * 100) : null
+  const parsedDefect = defectInput.trim() === '' ? 0 : Number(defectInput)
 
+  const combinedTotal = (parsedResult ?? 0) + parsedDefect
+  const resultIsValid =
+    parsedResult !== null && !Number.isNaN(parsedResult) && parsedResult >= 0 && combinedTotal <= assignment.plannedQuantity
+  const defectIsValid = !Number.isNaN(parsedDefect) && parsedDefect >= 0 && combinedTotal <= assignment.plannedQuantity
+  const resultPercent = resultIsValid && assignment.plannedQuantity > 0 ? Math.round((parsedResult / assignment.plannedQuantity) * 100) : null
+  const defectPercent = defectIsValid && parsedDefect > 0 && assignment.plannedQuantity > 0 ? Math.round((parsedDefect / assignment.plannedQuantity) * 100) : null
+
+  // Факт и брак вместе не могут превышать план — при вводе одного обрезаем по остатку от другого.
   const handleResultChange = (raw: string) => {
     if (raw.trim() === '') {
       setResultInput('')
@@ -79,12 +90,24 @@ export function OrderDetailDrawer({
     }
     const num = Number(raw)
     if (Number.isNaN(num)) return
-    setResultInput(String(Math.min(Math.max(num, 0), assignment.plannedQuantity)))
+    const maxAllowed = Math.max(0, assignment.plannedQuantity - parsedDefect)
+    setResultInput(String(Math.min(Math.max(num, 0), maxAllowed)))
+  }
+
+  const handleDefectChange = (raw: string) => {
+    if (raw.trim() === '') {
+      setDefectInput('')
+      return
+    }
+    const num = Number(raw)
+    if (Number.isNaN(num)) return
+    const maxAllowed = Math.max(0, assignment.plannedQuantity - (parsedResult ?? 0))
+    setDefectInput(String(Math.min(Math.max(num, 0), maxAllowed)))
   }
 
   const handleSaveResult = () => {
-    if (!resultIsValid) return
-    resultMutation.mutate({ id: assignment.id, actualQuantity: parsedResult })
+    if (!resultIsValid || !defectIsValid) return
+    resultMutation.mutate({ id: assignment.id, actualQuantity: parsedResult, defectQuantity: parsedDefect, shiftNumber })
   }
 
   const now = useMemo(() => new Date(), [])
@@ -252,31 +275,73 @@ export function OrderDetailDrawer({
           <div>
             <p className="mb-2 text-xs font-semibold text-[var(--color-ink-900)]">Результат</p>
             <div className="space-y-2 rounded-lg border border-[var(--color-border)] px-3 py-3">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs text-[var(--color-ink-600)]">
+                  Факт, шт
+                  <input
+                    type="number"
+                    min={0}
+                    max={assignment.plannedQuantity}
+                    value={resultInput}
+                    onChange={(e) => handleResultChange(e.target.value)}
+                    placeholder="0"
+                    className="mt-1 h-9 w-full rounded-lg border border-[var(--color-border)] px-3 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+                  />
+                </label>
+                <label className="text-xs text-[var(--color-ink-600)]">
+                  Брак, шт
+                  <input
+                    type="number"
+                    min={0}
+                    value={defectInput}
+                    onChange={(e) => handleDefectChange(e.target.value)}
+                    placeholder="0"
+                    className="mt-1 h-9 w-full rounded-lg border border-[var(--color-border)] px-3 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+                  />
+                </label>
+              </div>
+              <p className="text-[11px] text-[var(--color-ink-400)]">Факт + брак не больше планового количества — {assignment.plannedQuantity} шт</p>
+
               <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  max={assignment.plannedQuantity}
-                  value={resultInput}
-                  onChange={(e) => handleResultChange(e.target.value)}
-                  placeholder="Факт, шт"
-                  className="h-9 w-full rounded-lg border border-[var(--color-border)] px-3 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
-                />
-                <Button type="button" variant="secondary" size="sm" disabled={!resultIsValid || resultMutation.isPending} onClick={handleSaveResult}>
+                <label className="flex-1 text-xs text-[var(--color-ink-600)]">
+                  Смена
+                  <select
+                    value={shiftNumber}
+                    onChange={(e) => setShiftNumber(Number(e.target.value))}
+                    className="mt-1 h-9 w-full rounded-lg border border-[var(--color-border)] px-3 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+                  >
+                    <option value={1}>Смена 1</option>
+                    <option value={2}>Смена 2</option>
+                    <option value={3}>Смена 3</option>
+                  </select>
+                </label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="mt-5"
+                  disabled={!resultIsValid || !defectIsValid || resultMutation.isPending}
+                  onClick={handleSaveResult}
+                >
                   {resultMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Сохранить
                 </Button>
               </div>
-              <p className="text-[11px] text-[var(--color-ink-400)]">Не больше планового количества — {assignment.plannedQuantity} шт</p>
 
               {resultPercent !== null && (
                 <div>
                   <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-ink-600)]">
                     <span>Готовность плана</span>
-                    <span className="font-semibold tabular-nums text-[var(--color-ink-900)]">{resultPercent}%</span>
+                    <span className="font-semibold tabular-nums text-[var(--color-ink-900)]">
+                      {resultPercent}%
+                      {defectPercent !== null && <span className="text-[var(--color-priority-critical)]"> · брак {defectPercent}%</span>}
+                    </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
-                    <div className="h-full rounded-full transition-[width]" style={{ width: `${resultPercent}%`, backgroundColor: priorityColorVar(order.priority) }} />
+                  <div className="flex h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
+                    <div className="h-full transition-[width]" style={{ width: `${resultPercent}%`, backgroundColor: priorityColorVar(order.priority) }} />
+                    {defectPercent !== null && (
+                      <div className="h-full transition-[width]" style={{ width: `${defectPercent}%`, backgroundColor: 'var(--color-priority-critical)' }} />
+                    )}
                   </div>
                 </div>
               )}

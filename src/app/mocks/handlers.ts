@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
-import { getMockDataset, cascadeUnassign } from './data/generate-mock-data'
+import { getMockDataset, cascadeUnassign, logOrderEvent } from './data/generate-mock-data'
 import { buildDashboardSummary } from './data/dashboard-aggregations'
 import { buildAnalyticsSummary } from './data/analytics-aggregations'
 import type { Order } from '@/entities/order'
@@ -85,6 +85,13 @@ export const handlers = [
         if (product && product.techMap.machineGroupId === machine.groupId) return true
         if (order?.status === 'done') return true
         if (order) order.status = 'needs_reassignment'
+        logOrderEvent(dataset, {
+          orderId: a.orderId,
+          type: 'unassigned',
+          at: new Date().toISOString(),
+          machineName: machine.name,
+          reason: 'Смена группы станка',
+        })
         unassignedCount += 1
         return false
       })
@@ -102,7 +109,7 @@ export const handlers = [
       return HttpResponse.json({ message: 'Станок не найден' }, { status: 404 })
     }
 
-    const unassignedCount = cascadeUnassign(dataset, dataset.machines[index]!.id, -Infinity, Infinity, { skipDone: false })
+    const unassignedCount = cascadeUnassign(dataset, dataset.machines[index]!.id, -Infinity, Infinity, { skipDone: false, reason: 'Станок удалён' })
     dataset.machines.splice(index, 1)
     dataset.downtimeRules = dataset.downtimeRules.filter((r) => r.machineId !== params.id)
     return HttpResponse.json({ deleted: true, unassignedCount })
@@ -147,6 +154,16 @@ export const handlers = [
 
     const limit = Number(url.searchParams.get('limit') ?? '200')
     return HttpResponse.json(orders.slice(0, limit))
+  }),
+
+  /** История заказа для отчёта — кто/что/когда, от новых событий к старым. */
+  http.get('/api/orders/:id/events', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const events = dataset.orderEvents
+      .filter((e) => e.orderId === params.id)
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    return HttpResponse.json(events)
   }),
 
   /**
@@ -220,6 +237,9 @@ export const handlers = [
     dataset.assignments.push(assignment)
     if (order.status === 'needs_reassignment') order.status = 'planned'
 
+    const newMachine = dataset.machines.find((m) => m.id === body.machineId)
+    logOrderEvent(dataset, { orderId: body.orderId, type: 'reassigned', at: new Date().toISOString(), machineName: newMachine?.name })
+
     return HttpResponse.json(assignment, { status: 201 })
   }),
 
@@ -229,7 +249,14 @@ export const handlers = [
    */
   http.patch('/api/assignments/:id', async ({ request, params }) => {
     await simulateNetwork()
-    const body = (await request.json()) as Partial<{ machineId: string; startAt: string; endAt: string; actualQuantity: number }>
+    const body = (await request.json()) as Partial<{
+      machineId: string
+      startAt: string
+      endAt: string
+      actualQuantity: number
+      defectQuantity: number
+      shiftNumber: number
+    }>
     const dataset = getMockDataset()
     const assignment = dataset.assignments.find((a) => a.id === params.id)
     if (!assignment) {
@@ -250,13 +277,41 @@ export const handlers = [
         return HttpResponse.json({ message: 'Станок занят в это время' }, { status: 409 })
       }
 
+      const fromMachineName = dataset.machines.find((m) => m.id === assignment.machineId)?.name
+      const toMachineName = dataset.machines.find((m) => m.id === body.machineId)?.name
+
       assignment.machineId = body.machineId
       assignment.startAt = body.startAt
       assignment.endAt = body.endAt
+
+      logOrderEvent(dataset, {
+        orderId: assignment.orderId,
+        type: 'moved',
+        at: new Date().toISOString(),
+        machineName: toMachineName,
+        fromMachineName,
+      })
     }
 
     if (body.actualQuantity !== undefined) {
       assignment.actualQuantity = body.actualQuantity
+    }
+    if (body.defectQuantity !== undefined) {
+      assignment.defectQuantity = body.defectQuantity
+    }
+    if (body.shiftNumber !== undefined) {
+      assignment.shiftNumber = body.shiftNumber
+    }
+    if (body.actualQuantity !== undefined || body.defectQuantity !== undefined) {
+      logOrderEvent(dataset, {
+        orderId: assignment.orderId,
+        type: 'result',
+        at: new Date().toISOString(),
+        machineName: dataset.machines.find((m) => m.id === assignment.machineId)?.name,
+        actualQuantity: assignment.actualQuantity,
+        defectQuantity: assignment.defectQuantity,
+        shiftNumber: assignment.shiftNumber,
+      })
     }
 
     return HttpResponse.json(assignment)
@@ -328,6 +383,9 @@ export const handlers = [
       plannedQuantity: body.quantity,
     })
 
+    const createdMachine = dataset.machines.find((m) => m.id === body.machineId)
+    logOrderEvent(dataset, { orderId, type: 'created', at: new Date().toISOString(), machineName: createdMachine?.name })
+
     return HttpResponse.json(order, { status: 201 })
   }),
 
@@ -362,7 +420,9 @@ export const handlers = [
       recurrence: body.recurrence,
     }
     dataset.downtimeRules.push(rule)
-    const unassignedCount = cascadeUnassign(dataset, body.machineId, new Date(body.startAt).getTime(), new Date(body.endAt).getTime())
+    const unassignedCount = cascadeUnassign(dataset, body.machineId, new Date(body.startAt).getTime(), new Date(body.endAt).getTime(), {
+      reason: `Простой: ${body.reason}`,
+    })
     return HttpResponse.json({ rule, unassignedCount }, { status: 201 })
   }),
 

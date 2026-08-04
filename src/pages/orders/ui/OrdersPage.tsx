@@ -8,8 +8,9 @@ import { Card } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Pagination } from '@/shared/ui/Pagination'
-import { useOrdersPageQuery, priorityBgVar, priorityColorVar, priorityLabel, statusLabel, type OrderPriority, type OrderStatus } from '@/entities/order'
+import { useOrdersPageQuery, priorityBgVar, priorityColorVar, priorityLabel, statusLabel, type Order, type OrderPriority, type OrderStatus } from '@/entities/order'
 import { cn } from '@/shared/lib/cn'
+import { OrderReportDrawer } from './OrderReportDrawer'
 
 const STATUS_DOT: Record<OrderStatus, string> = {
   planned: 'var(--color-priority-normal)',
@@ -33,6 +34,7 @@ export function OrdersPage() {
   const [status, setStatus] = useState<OrderStatus | 'all'>(incoming?.initialStatus ?? 'all')
   const [priority, setPriority] = useState<OrderPriority | 'all'>(incoming?.initialPriority ?? 'all')
   const [page, setPage] = useState(1)
+  const [reportOrder, setReportOrder] = useState<Order | null>(null)
 
   const query = useOrdersPageQuery({
     search: search || undefined,
@@ -119,7 +121,11 @@ export function OrdersPage() {
                 </thead>
                 <tbody>
                   {(query.data?.items ?? []).map((order) => (
-                    <tr key={order.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]">
+                    <tr
+                      key={order.id}
+                      onClick={() => setReportOrder(order)}
+                      className="cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]"
+                    >
                       <td className="px-4 py-2.5 font-medium text-[var(--color-ink-900)]">{order.code}</td>
                       <td className="px-4 py-2.5 text-[var(--color-ink-600)]">{order.productName}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-ink-600)]">{order.quantity}</td>
@@ -135,7 +141,7 @@ export function OrdersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 tabular-nums text-[var(--color-ink-600)]">{format(new Date(order.deadline), 'd MMM yyyy', { locale: ru })}</td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                         {order.status === 'needs_reassignment' && (
                           <Link to={`/matrix?assignOrder=${order.id}`}>
                             <Button size="sm" variant="primary">
@@ -161,6 +167,8 @@ export function OrdersPage() {
           {query.data && <Pagination page={page} pageSize={PAGE_SIZE} total={query.data.total} onPageChange={setPage} />}
         </Card>
       </main>
+
+      {reportOrder && <OrderReportDrawer order={reportOrder} onClose={() => setReportOrder(null)} />}
     </>
   )
 }
