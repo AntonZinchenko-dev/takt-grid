@@ -9,6 +9,7 @@ import { useMachinesQuery } from '@/entities/machine'
 import type { Machine } from '@/entities/machine'
 import { GridStore } from '../model/grid-store'
 import { useScheduleData } from '../model/use-schedule-data'
+import type { ZoomLevel } from '../lib/timeline'
 import { Toolbar } from './Toolbar'
 import { ScheduleGrid } from './grid/ScheduleGrid'
 import { SelectionPanel } from './SelectionPanel'
@@ -64,8 +65,9 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   // Зависим от location.key (не []): navigate() к тому же /matrix даёт новый key,
   // так что переход срабатывает и если пользователь уже был на этой странице.
   useEffect(() => {
-    const state = location.state as { jumpToIso?: string } | null
+    const state = location.state as { jumpToIso?: string; zoom?: ZoomLevel } | null
     if (state?.jumpToIso) store.jumpToDate(new Date(state.jumpToIso))
+    if (state?.zoom) store.setZoom(state.zoom)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Loader2, Search } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -25,9 +25,13 @@ const PRIORITY_OPTIONS: OrderPriority[] = ['low', 'normal', 'high', 'critical']
 const PAGE_SIZE = 20
 
 export function OrdersPage() {
+  // Переход с дашборда ("Быстрые фильтры") — сразу применить статус/приоритет.
+  const location = useLocation()
+  const incoming = location.state as { initialStatus?: OrderStatus; initialPriority?: OrderPriority } | null
+
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<OrderStatus | 'all'>('all')
-  const [priority, setPriority] = useState<OrderPriority | 'all'>('all')
+  const [status, setStatus] = useState<OrderStatus | 'all'>(incoming?.initialStatus ?? 'all')
+  const [priority, setPriority] = useState<OrderPriority | 'all'>(incoming?.initialPriority ?? 'all')
   const [page, setPage] = useState(1)
 
   const query = useOrdersPageQuery({
