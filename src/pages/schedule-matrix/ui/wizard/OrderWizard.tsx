@@ -179,145 +179,148 @@ export const OrderWizard = observer(function OrderWizard({ store, products, mach
           }
 
   return (
-    <div className="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
-          <h2 className="text-base font-semibold text-[var(--color-ink-900)]">Новый заказ</h2>
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          <div>
-            <label htmlFor="order-product" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Продукт</label>
-            <select
-              id="order-product"
-              {...register('productId')}
-              className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
-            >
-              <option value="">Выберите продукт…</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {errors.productId && <p className="mt-1 text-xs text-red-600">{errors.productId.message}</p>}
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative flex h-full w-full max-w-md flex-col overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+            <h2 className="text-base font-semibold text-[var(--color-ink-900)]">Новый заказ</h2>
+            <button type="button" onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          {techMap && (
-            <div className="grid grid-cols-3 gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-3 text-xs">
-              <div>
-                <p className="text-[var(--color-ink-400)]">Группа станков</p>
-                <p className="font-medium text-[var(--color-ink-900)]">{groupMachines[0]?.groupName ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-[var(--color-ink-400)]">Темп</p>
-                <p className="font-medium tabular-nums text-[var(--color-ink-900)]">{techMap.outputPerHour} шт/ч</p>
-              </div>
-              <div>
-                <p className="text-[var(--color-ink-400)]">Кратность упаковки</p>
-                <p className="font-medium tabular-nums text-[var(--color-ink-900)]">{techMap.packageMultiplicity} шт</p>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
             <div>
-              <label htmlFor="order-quantity" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Количество, шт.</label>
-              <input
-                id="order-quantity"
-                type="number"
-                {...register('quantity', { valueAsNumber: true })}
+              <label htmlFor="order-product" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Продукт</label>
+              <select
+                id="order-product"
+                {...register('productId')}
                 className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
-              />
-              {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity.message}</p>}
+              >
+                <option value="">Выберите продукт…</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {errors.productId && <p className="mt-1 text-xs text-red-600">{errors.productId.message}</p>}
             </div>
-            <div>
-              <label htmlFor="order-deadline" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Срок</label>
-              <input
-                id="order-deadline"
-                type="date"
-                {...register('deadline')}
-                className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
-              />
-              {errors.deadline && <p className="mt-1 text-xs text-red-600">{errors.deadline.message}</p>}
-            </div>
-          </div>
 
-          <div>
-            <label htmlFor="order-priority" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Приоритет</label>
-            <select
-              id="order-priority"
-              {...register('priority')}
-              className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {priorityLabel(p)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {techMap && requiredHours > 0 && (
-            <>
-              <div className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-600)]">
-                Требуется машино-часов: <span className="font-semibold text-[var(--color-ink-900)]">{requiredHours} ч</span>
-              </div>
-
-              {feasibility && (
-                <div className="flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-medium" style={{ borderColor: feasibility.color, backgroundColor: feasibility.bg, color: feasibility.color }}>
-                  <feasibility.icon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{feasibility.text}</span>
-                </div>
-              )}
-
-              {candidates.length > 0 && (
+            {techMap && (
+              <div className="grid grid-cols-3 gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-3 text-xs">
                 <div>
-                  <p className="mb-2 text-xs font-semibold text-[var(--color-ink-900)]">Рекомендуемые слоты</p>
-                  <div className="space-y-1.5">
-                    {candidates.map((c, i) => (
-                      <button
-                        type="button"
-                        key={c.machine.id}
-                        onClick={() => setSelectedIndex(i)}
-                        onMouseEnter={() => handleHoverCandidate(c)}
-                        onMouseLeave={handleLeaveCandidate}
-                        className={cn(
-                          'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors',
-                          i === clampedIndex ? 'border-[var(--color-brand-500)] bg-[var(--color-brand-50)]' : 'border-[var(--color-border)] hover:bg-[var(--color-canvas)]',
-                        )}
-                      >
-                        <span>
-                          <span className="block font-medium text-[var(--color-ink-900)]">{c.machine.name}</span>
-                          <span className="text-[var(--color-ink-600)]">
-                            {format(new Date(c.start), 'd MMM, HH:mm', { locale: ru })} – {format(new Date(c.end), 'HH:mm', { locale: ru })}
-                          </span>
-                        </span>
-                        {!c.fitsDeadline && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--color-priority-high)]" />}
-                      </button>
-                    ))}
-                  </div>
+                  <p className="text-[var(--color-ink-400)]">Группа станков</p>
+                  <p className="font-medium text-[var(--color-ink-900)]">{groupMachines[0]?.groupName ?? '—'}</p>
                 </div>
-              )}
-            </>
-          )}
+                <div>
+                  <p className="text-[var(--color-ink-400)]">Темп</p>
+                  <p className="font-medium tabular-nums text-[var(--color-ink-900)]">{techMap.outputPerHour} шт/ч</p>
+                </div>
+                <div>
+                  <p className="text-[var(--color-ink-400)]">Кратность упаковки</p>
+                  <p className="font-medium tabular-nums text-[var(--color-ink-900)]">{techMap.packageMultiplicity} шт</p>
+                </div>
+              </div>
+            )}
 
-          {createMutation.isError && <p className="text-xs font-medium text-red-600">Не удалось создать заказ — возможно, слот уже заняли. Попробуйте другой вариант.</p>}
-        </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="order-quantity" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Количество, шт.</label>
+                <input
+                  id="order-quantity"
+                  type="number"
+                  {...register('quantity', { valueAsNumber: true })}
+                  className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+                />
+                {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="order-deadline" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Срок</label>
+                <input
+                  id="order-deadline"
+                  type="date"
+                  {...register('deadline')}
+                  className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+                />
+                {errors.deadline && <p className="mt-1 text-xs text-red-600">{errors.deadline.message}</p>}
+              </div>
+            </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] px-5 py-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={createMutation.isPending}>
-            Отмена
-          </Button>
-          <Button type="submit" variant="primary" disabled={!selectedCandidate || createMutation.isPending}>
-            {createMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Создать заказ
-          </Button>
-        </div>
-      </form>
+            <div>
+              <label htmlFor="order-priority" className="mb-1 block text-xs font-semibold text-[var(--color-ink-900)]">Приоритет</label>
+              <select
+                id="order-priority"
+                {...register('priority')}
+                className="h-9 w-full rounded-lg border border-[var(--color-border)] px-2.5 text-sm text-[var(--color-ink-900)] outline-none focus:border-[var(--color-brand-500)]"
+              >
+                {PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {priorityLabel(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {techMap && requiredHours > 0 && (
+              <>
+                <div className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-ink-600)]">
+                  Требуется машино-часов: <span className="font-semibold text-[var(--color-ink-900)]">{requiredHours} ч</span>
+                </div>
+
+                {feasibility && (
+                  <div className="flex items-start gap-2 rounded-lg border px-3 py-2 text-xs font-medium" style={{ borderColor: feasibility.color, backgroundColor: feasibility.bg, color: feasibility.color }}>
+                    <feasibility.icon className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{feasibility.text}</span>
+                  </div>
+                )}
+
+                {candidates.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-[var(--color-ink-900)]">Рекомендуемые слоты</p>
+                    <div className="space-y-1.5">
+                      {candidates.map((c, i) => (
+                        <button
+                          type="button"
+                          key={c.machine.id}
+                          onClick={() => setSelectedIndex(i)}
+                          onMouseEnter={() => handleHoverCandidate(c)}
+                          onMouseLeave={handleLeaveCandidate}
+                          className={cn(
+                            'flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors',
+                            i === clampedIndex ? 'border-[var(--color-brand-500)] bg-[var(--color-brand-50)]' : 'border-[var(--color-border)] hover:bg-[var(--color-canvas)]',
+                          )}
+                        >
+                          <span>
+                            <span className="block font-medium text-[var(--color-ink-900)]">{c.machine.name}</span>
+                            <span className="text-[var(--color-ink-600)]">
+                              {format(new Date(c.start), 'd MMM, HH:mm', { locale: ru })} – {format(new Date(c.end), 'HH:mm', { locale: ru })}
+                            </span>
+                          </span>
+                          {!c.fitsDeadline && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--color-priority-high)]" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {createMutation.isError && <p className="text-xs font-medium text-red-600">Не удалось создать заказ — возможно, слот уже заняли. Попробуйте другой вариант.</p>}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-[var(--color-border)] px-5 py-4">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={createMutation.isPending}>
+              Отмена
+            </Button>
+            <Button type="submit" variant="primary" disabled={!selectedCandidate || createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Создать заказ
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 })

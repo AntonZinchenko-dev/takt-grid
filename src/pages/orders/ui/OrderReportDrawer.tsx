@@ -1,9 +1,10 @@
-import { X, Loader2, PlusCircle, ArrowRightLeft, AlertTriangle, ClipboardCheck } from 'lucide-react'
+import { X, Loader2, Printer, PlusCircle, ArrowRightLeft, AlertTriangle, ClipboardCheck } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { Order, OrderEvent, OrderEventType } from '@/entities/order'
 import { priorityLabel, priorityColorVar, priorityBgVar, statusLabel, useOrderEventsQuery } from '@/entities/order'
 import { Badge } from '@/shared/ui/Badge'
+import { Button } from '@/shared/ui/Button'
 
 const STATUS_DOT: Record<Order['status'], string> = {
   planned: 'var(--color-priority-normal)',
@@ -73,19 +74,30 @@ export function OrderReportDrawer({ order, onClose }: OrderReportDrawerProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+      <div className="absolute inset-0 bg-black/20 print:hidden" onClick={onClose} />
+      <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl print:max-w-none print:border-0 print:shadow-none">
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4 print:hidden">
           <div>
             <h2 className="text-base font-semibold text-[var(--color-ink-900)]">Отчёт: {order.code}</h2>
             <p className="text-xs text-[var(--color-ink-600)]">{order.productName}</p>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <Button variant="secondary" size="sm" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5" />
+              Печать
+            </Button>
+            <button onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-5 px-5 py-4">
+        <div className="print-area space-y-5 px-5 py-4">
+          <div className="mb-1 hidden print:block">
+            <h1 className="text-lg font-semibold text-[var(--color-ink-900)]">Отчёт по заказу {order.code}</h1>
+            <p className="text-sm text-[var(--color-ink-600)]">{order.productName}</p>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <Badge color={priorityColorVar(order.priority)} bg={priorityBgVar(order.priority)}>
               {priorityLabel(order.priority)}

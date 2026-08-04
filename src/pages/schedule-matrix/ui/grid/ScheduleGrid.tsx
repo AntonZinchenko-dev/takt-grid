@@ -137,6 +137,17 @@ export const ScheduleGrid = observer(function ScheduleGrid({
     recomputeVisibleHour()
   }, [store.scrollRequestToken, store, recomputeVisibleHour])
 
+  // Подсветка блока из глобального поиска — довернуть вертикальный скролл к его строке
+  // (горизонтальный уже правит store.jumpToDate через scrollRequestToken выше).
+  useEffect(() => {
+    const highlightedId = store.highlightedAssignmentId
+    if (!highlightedId) return
+    const assignment = assignmentsById.get(highlightedId)
+    if (!assignment) return
+    const rowIndex = store.flatRows.findIndex((r) => r.kind === 'machine' && r.machine.id === assignment.machineId)
+    if (rowIndex !== -1) rowVirtualizer.scrollToIndex(rowIndex, { align: 'center' })
+  }, [store.highlightedAssignmentId, assignmentsById, store, rowVirtualizer])
+
   // Esc отменяет активный drag-перенос
   useEffect(() => {
     if (!store.dragGhost) return
@@ -414,6 +425,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
                       onOpenDetail={onOpenOrderDetail}
                       isDraggingOrigin={ghost?.assignmentId === interval.id}
                       dimmed={!matchesFilter}
+                      highlighted={store.highlightedAssignmentId === interval.id}
                     />
                   )
                 })}

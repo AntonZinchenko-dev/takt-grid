@@ -28,6 +28,8 @@ interface OrderBlockProps {
   onOpenDetail: (assignmentId: string) => void
   isDraggingOrigin?: boolean
   dimmed?: boolean
+  /** Найден через глобальный поиск — коротко обводится кольцом (см. .search-highlight-ring). */
+  highlighted?: boolean
 }
 
 
@@ -54,6 +56,7 @@ export function OrderBlock({
   onOpenDetail,
   isDraggingOrigin,
   dimmed,
+  highlighted,
 }: OrderBlockProps) {
   const pointerRef = useRef<{ startClientX: number; startClientY: number; dragging: boolean } | null>(null)
 
@@ -123,6 +126,7 @@ export function OrderBlock({
         done && 'opacity-70',
         isDraggingOrigin && 'opacity-25',
         dimmed && 'opacity-20 saturate-0',
+        highlighted && 'search-highlight-ring',
       )}
       style={{
         left: leftPx,

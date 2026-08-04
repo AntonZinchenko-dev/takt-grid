@@ -103,7 +103,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
                   <button
                     key={order.id}
                     onClick={() => {
-                      navigate('/matrix', { state: { jumpToIso: order.deadline } })
+                      navigate('/matrix', { state: { jumpToIso: order.deadline, highlightOrderId: order.id } })
                       close()
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-canvas)]"
@@ -144,7 +144,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
                   <button
                     key={product.id}
                     onClick={() => {
-                      navigate('/catalog')
+                      navigate('/catalog', { state: { highlightProductId: product.id } })
                       close()
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-canvas)]"

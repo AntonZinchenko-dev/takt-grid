@@ -89,6 +89,39 @@
     background: var(--color-ink-400);
     border-radius: 9999px;
   }
+
+  /* Кратковременная подсветка строки/блока, на который перешли из глобального поиска. */
+  .search-highlight {
+    animation: search-highlight-flash 2.2s ease-out;
+  }
+
+  /* То же самое, но кольцом — для блока заказа в матрице: он сам с overflow-hidden,
+     box-shadow там обрезался бы собственным клипом, а outline рисуется поверх и не режется. */
+  .search-highlight-ring {
+    animation: search-highlight-ring-flash 2.2s ease-out;
+  }
+}
+
+@keyframes search-highlight-flash {
+  0%,
+  35% {
+    background-color: var(--color-brand-100);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes search-highlight-ring-flash {
+  0%,
+  40% {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
 }
 
 /* Печать сменного задания (см. ShiftExportDrawer) — прячем всё, кроме .print-area,

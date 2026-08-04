@@ -96,7 +96,7 @@ export const BulkEditPanel = observer(function BulkEditPanel({
               Затронуто {affected.length} {pluralizeCells(affected.length)} на {machines.length} {pluralizeMachines(machines.length)}
             </p>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
+          <button onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
             <X className="h-4 w-4" />
           </button>
         </div>

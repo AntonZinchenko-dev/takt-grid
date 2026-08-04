@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Loader2, Pencil, X } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
 import { Card } from '@/shared/ui/Card'
@@ -6,6 +7,7 @@ import { Button } from '@/shared/ui/Button'
 import { Pagination } from '@/shared/ui/Pagination'
 import { useProductsQuery, useUpdateTechMapMutation } from '@/entities/product'
 import type { Product } from '@/entities/product'
+import { cn } from '@/shared/lib/cn'
 
 const PAGE_SIZE = 20
 
@@ -20,7 +22,7 @@ function EditTechMapDrawer({ product, onClose }: { product: Product; onClose: ()
       <div className="relative flex h-full w-full max-w-sm flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
           <h2 className="text-base font-semibold text-[var(--color-ink-900)]">{product.name}</h2>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
+          <button onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -62,9 +64,26 @@ export function CatalogPage() {
   const productsQuery = useProductsQuery()
   const [editing, setEditing] = useState<Product | null>(null)
   const [page, setPage] = useState(1)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const location = useLocation()
+  const handledLocationKeyRef = useRef<string | null>(null)
 
   const allProducts = productsQuery.data ?? []
   const pageProducts = allProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  // Переход из глобального поиска в шапке — перейти на страницу продукта и подсветить строку.
+  // Ключуем по location.key (не по data), иначе фоновый рефетч списка продуктов заново
+  // прыгал бы на страницу и перезапускал подсветку спустя долгое время после перехода.
+  useEffect(() => {
+    const state = location.state as { highlightProductId?: string } | null
+    if (!state?.highlightProductId || !productsQuery.data || handledLocationKeyRef.current === location.key) return
+    handledLocationKeyRef.current = location.key
+    setHighlightedId(state.highlightProductId)
+    const index = productsQuery.data.findIndex((p) => p.id === state.highlightProductId)
+    if (index !== -1) setPage(Math.floor(index / PAGE_SIZE) + 1)
+    const timer = window.setTimeout(() => setHighlightedId(null), 2200)
+    return () => window.clearTimeout(timer)
+  }, [location.key, location.state, productsQuery.data])
 
   return (
     <>
@@ -88,7 +107,16 @@ export function CatalogPage() {
                 </thead>
                 <tbody>
                   {pageProducts.map((product) => (
-                    <tr key={product.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]">
+                    <tr
+                      key={product.id}
+                      ref={(el) => {
+                        if (product.id === highlightedId) el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                      }}
+                      className={cn(
+                        'border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]',
+                        product.id === highlightedId && 'search-highlight',
+                      )}
+                    >
                       <td className="px-4 py-2.5 font-medium text-[var(--color-ink-900)]">{product.name}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-ink-600)]">{product.techMap.outputPerHour}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-ink-600)]">{product.techMap.packageMultiplicity}</td>

@@ -1,25 +1,44 @@
+import { lazy, Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
-import { GroupLoadHeatmap, OutputTrendChart, DowntimeTrendChart } from '@/widgets/trend-charts'
 import { useDashboardSummaryQuery } from '../model/use-dashboard-summary'
 import { useDashboardLayoutStore } from '../model/use-dashboard-layout'
 import { DASHBOARD_PANELS, XL_COL_SPAN_CLASS, type DashboardPanelId } from '../model/panels'
 import type { DashboardSummary } from '../model/types'
 import { KpiCards } from './KpiCards'
-import { WorkloadDonut } from './WorkloadDonut'
 import { AttentionOrdersTable } from './AttentionOrdersTable'
 import { TodayMiniGantt } from './TodayMiniGantt'
 import { QuickFilters } from './QuickFilters'
 import { PanelSettingsMenu } from './PanelSettingsMenu'
+
+// recharts тянет ~150 КБ — на дашборде (единственном eager-роуте) это раздувало главный
+// бандл сверх предупреждения Vite (500 КБ). Графики уходят в свой чанк и подгружаются
+// параллельно с данными, а не блокируют первый рендер остального дашборда.
+const GroupLoadHeatmap = lazy(() => import('@/widgets/trend-charts').then((m) => ({ default: m.GroupLoadHeatmap })))
+const OutputTrendChart = lazy(() => import('@/widgets/trend-charts').then((m) => ({ default: m.OutputTrendChart })))
+const DowntimeTrendChart = lazy(() => import('@/widgets/trend-charts').then((m) => ({ default: m.DowntimeTrendChart })))
+const WorkloadDonut = lazy(() => import('./WorkloadDonut').then((m) => ({ default: m.WorkloadDonut })))
+
+function ChartSkeleton() {
+  return <div className="h-64 animate-pulse rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]" />
+}
 
 const PANEL_META = new Map(DASHBOARD_PANELS.map((p) => [p.id, p]))
 
 function renderPanel(id: DashboardPanelId, data: DashboardSummary) {
   switch (id) {
     case 'groupLoadHeatmap':
-      return <GroupLoadHeatmap data={data.groupLoadByDay} periodLabel="7 дней" />
+      return (
+        <Suspense fallback={<ChartSkeleton />}>
+          <GroupLoadHeatmap data={data.groupLoadByDay} periodLabel="7 дней" />
+        </Suspense>
+      )
     case 'workloadDonut':
-      return <WorkloadDonut data={data.groupDistribution} totalPercent={data.kpis.overallLoadPercent} />
+      return (
+        <Suspense fallback={<ChartSkeleton />}>
+          <WorkloadDonut data={data.groupDistribution} totalPercent={data.kpis.overallLoadPercent} />
+        </Suspense>
+      )
     case 'attentionOrders':
       return <AttentionOrdersTable orders={data.attentionOrders} />
     case 'todayGantt':
@@ -27,9 +46,17 @@ function renderPanel(id: DashboardPanelId, data: DashboardSummary) {
     case 'quickFilters':
       return <QuickFilters />
     case 'outputTrend':
-      return <OutputTrendChart data={data.outputTrend} />
+      return (
+        <Suspense fallback={<ChartSkeleton />}>
+          <OutputTrendChart data={data.outputTrend} />
+        </Suspense>
+      )
     case 'downtimeTrend':
-      return <DowntimeTrendChart data={data.downtimeTrend} />
+      return (
+        <Suspense fallback={<ChartSkeleton />}>
+          <DowntimeTrendChart data={data.downtimeTrend} />
+        </Suspense>
+      )
   }
 }
 

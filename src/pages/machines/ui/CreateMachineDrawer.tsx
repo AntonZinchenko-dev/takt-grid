@@ -37,7 +37,7 @@ export function CreateMachineDrawer({ groupOptions, onClose }: CreateMachineDraw
       <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
           <h2 className="text-base font-semibold text-[var(--color-ink-900)]">Новый станок</h2>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
+          <button onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
             <X className="h-4 w-4" />
           </button>
         </div>

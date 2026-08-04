@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Loader2, Plus } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
@@ -10,6 +10,7 @@ import type { Machine } from '@/entities/machine'
 import { useWorkshopsQuery } from '@/entities/workshop'
 import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
 import { RANGE_START_DAYS, RANGE_END_DAYS } from '@/shared/lib/schedule-window'
+import { cn } from '@/shared/lib/cn'
 import { MachineDetailDrawer } from './MachineDetailDrawer'
 import { CreateMachineDrawer } from './CreateMachineDrawer'
 import type { MachineGroupOption } from '../model/types'
@@ -26,14 +27,24 @@ export function MachinesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [page, setPage] = useState(1)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const location = useLocation()
+  const handledLocationKeyRef = useRef<string | null>(null)
 
-  // Переход из глобального поиска в шапке — сразу открыть карточку станка
+  // Переход из глобального поиска в шапке — открыть карточку станка, перейти на его страницу и подсветить строку.
+  // Ключуем по location.key (не по data), иначе фоновый рефетч того же списка станков заново
+  // прыгал бы на страницу и перезапускал подсветку спустя долгое время после перехода.
   useEffect(() => {
     const state = location.state as { openMachineId?: string } | null
-    if (state?.openMachineId) setSelectedId(state.openMachineId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!state?.openMachineId || !machinesQuery.data || handledLocationKeyRef.current === location.key) return
+    handledLocationKeyRef.current = location.key
+    setSelectedId(state.openMachineId)
+    setHighlightedId(state.openMachineId)
+    const index = machinesQuery.data.findIndex((m) => m.id === state.openMachineId)
+    if (index !== -1) setPage(Math.floor(index / PAGE_SIZE) + 1)
+    const timer = window.setTimeout(() => setHighlightedId(null), 2200)
+    return () => window.clearTimeout(timer)
+  }, [location.key, location.state, machinesQuery.data])
 
   const from = useMemo(() => new Date(Date.now() + RANGE_START_DAYS * DAY_MS).toISOString(), [])
   const to = useMemo(() => new Date(Date.now() + RANGE_END_DAYS * DAY_MS).toISOString(), [])
@@ -91,8 +102,14 @@ export function MachinesPage() {
                   {pageMachines.map((machine) => (
                     <tr
                       key={machine.id}
+                      ref={(el) => {
+                        if (machine.id === highlightedId) el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                      }}
                       onClick={() => setSelectedId(machine.id)}
-                      className="cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]"
+                      className={cn(
+                        'cursor-pointer border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]',
+                        machine.id === highlightedId && 'search-highlight',
+                      )}
                     >
                       <td className="px-4 py-2.5 font-medium text-[var(--color-ink-900)]">{machine.name}</td>
                       <td className="px-4 py-2.5 text-[var(--color-ink-600)]">{workshopNameById.get(machine.workshopId) ?? '—'}</td>

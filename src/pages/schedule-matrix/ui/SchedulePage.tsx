@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { Loader2 } from 'lucide-react'
@@ -49,6 +49,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const data = useScheduleData(store.anchorDate)
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const handledHighlightKeyRef = useRef<string | null>(null)
 
   const closeDetailDrawer = () => {
     setOpenAssignmentId(null)
@@ -72,6 +73,23 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
     if (state?.zoom) store.setZoom(state.zoom)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
+
+  // Переход из глобального поиска для конкретного заказа — уточняем дату до его реального
+  // назначения (грубый jumpToIso выше — это дедлайн, не факт расписания), открываем карточку
+  // и коротко подсвечиваем блок. Ждём подгрузки окна назначений на нужную дату: пока в
+  // assignmentByOrderId ничего нет, тихо выходим и перепроверяем на следующий рендер.
+  useEffect(() => {
+    const state = location.state as { highlightOrderId?: string } | null
+    if (!state?.highlightOrderId || handledHighlightKeyRef.current === location.key) return
+    const assignment = data.assignmentByOrderId.get(state.highlightOrderId)
+    if (!assignment) return
+    handledHighlightKeyRef.current = location.key
+    store.jumpToDate(new Date(assignment.startAt))
+    setConflictResolve(null)
+    setOpenAssignmentId(assignment.id)
+    store.setHighlightedAssignment(assignment.id, assignment.machineId)
+    window.setTimeout(() => store.setHighlightedAssignment(null), 2500)
+  }, [location.key, location.state, data.assignmentByOrderId, store])
 
   // Переход из "Конфликтов" — через query-параметры, не через location.state: state навсегда
   // прилипает к конкретной записи истории, так что при возврате на неё (кнопка "назад")

@@ -104,7 +104,7 @@ export function ShiftExportDrawer({ machines, workshops, ordersById, downtimeByM
       <div className="relative flex h-full w-full max-w-2xl flex-col overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl print:max-w-none print:border-0 print:shadow-none">
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4 print:hidden">
           <h2 className="text-base font-semibold text-[var(--color-ink-900)]">Печать / экспорт сменного задания</h2>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
+          <button onClick={onClose} aria-label="Закрыть" className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]">
             <X className="h-4 w-4" />
           </button>
         </div>

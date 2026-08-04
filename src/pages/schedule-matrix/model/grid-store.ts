@@ -58,6 +58,8 @@ export class GridStore {
   anchorDate: Date
   dragGhost: DragGhost | null = null
   previewGhost: PreviewGhost | null = null
+  /** Назначение, найденное через глобальный поиск — кратковременно подсвечивается в гриде (см. SchedulePage). */
+  highlightedAssignmentId: string | null = null
   filters: GridFilters = { workshopId: null, status: null, priority: null }
   visibleHourStart = 0
   visibleHourEnd = 120
@@ -85,6 +87,16 @@ export class GridStore {
 
   setAnchorDate(date: Date): void {
     this.anchorDate = date
+  }
+
+  /** machineId — чтобы развернуть цех, если он свёрнут (иначе строка станка не попадёт в flatRows и подсветить будет нечего). */
+  setHighlightedAssignment(assignmentId: string | null, machineId?: string): void {
+    this.highlightedAssignmentId = assignmentId
+    if (!assignmentId || !machineId) return
+    const machine = this.machines.find((m) => m.id === machineId)
+    if (machine && this.collapsedWorkshopIds.has(machine.workshopId)) {
+      this.collapsedWorkshopIds.delete(machine.workshopId)
+    }
   }
 
   scrollRequestToken = 0

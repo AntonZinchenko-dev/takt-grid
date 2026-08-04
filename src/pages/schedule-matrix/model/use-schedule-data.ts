@@ -39,6 +39,9 @@ export function useScheduleData(anchorDate: Date) {
 
   const assignmentsById = useMemo(() => new Map((assignmentsQuery.data ?? []).map((a) => [a.id, a])), [assignmentsQuery.data])
 
+  /** Обратный поиск по заказу — для перехода из глобального поиска (см. SchedulePage) к его текущему назначению в гриде. */
+  const assignmentByOrderId = useMemo(() => new Map((assignmentsQuery.data ?? []).map((a) => [a.orderId, a])), [assignmentsQuery.data])
+
   /** Переиспользуем протестированное ядро (см. shared/lib/occupancy-index) и для поиска блоков видимых в вьюпорте. */
   const occupancyIndex = useMemo(() => new OccupancyIndex(assignmentsQuery.data ?? []), [assignmentsQuery.data])
 
@@ -61,6 +64,7 @@ export function useScheduleData(anchorDate: Date) {
     products: productsQuery.data ?? [],
     assignmentsByMachine,
     assignmentsById,
+    assignmentByOrderId,
     occupancyIndex,
     ordersById,
     productsById,
