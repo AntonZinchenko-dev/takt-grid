@@ -3,8 +3,11 @@ import { Loader2, Pencil, X } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
 import { Card } from '@/shared/ui/Card'
 import { Button } from '@/shared/ui/Button'
+import { Pagination } from '@/shared/ui/Pagination'
 import { useProductsQuery, useUpdateTechMapMutation } from '@/entities/product'
 import type { Product } from '@/entities/product'
+
+const PAGE_SIZE = 20
 
 function EditTechMapDrawer({ product, onClose }: { product: Product; onClose: () => void }) {
   const [outputPerHour, setOutputPerHour] = useState(product.techMap.outputPerHour)
@@ -58,6 +61,10 @@ function EditTechMapDrawer({ product, onClose }: { product: Product; onClose: ()
 export function CatalogPage() {
   const productsQuery = useProductsQuery()
   const [editing, setEditing] = useState<Product | null>(null)
+  const [page, setPage] = useState(1)
+
+  const allProducts = productsQuery.data ?? []
+  const pageProducts = allProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <>
@@ -80,7 +87,7 @@ export function CatalogPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(productsQuery.data ?? []).map((product) => (
+                  {pageProducts.map((product) => (
                     <tr key={product.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-canvas)]">
                       <td className="px-4 py-2.5 font-medium text-[var(--color-ink-900)]">{product.name}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-ink-600)]">{product.techMap.outputPerHour}</td>
@@ -96,6 +103,7 @@ export function CatalogPage() {
               </table>
             </div>
           )}
+          {!productsQuery.isLoading && <Pagination page={page} pageSize={PAGE_SIZE} total={allProducts.length} onPageChange={setPage} />}
         </Card>
       </main>
       {editing && <EditTechMapDrawer product={editing} onClose={() => setEditing(null)} />}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -7,11 +7,13 @@ import { TopHeader } from '@/widgets/top-header'
 import { Card, CardBody, CardHeader, CardTitle } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
+import { Pagination } from '@/shared/ui/Pagination'
 import { useMachinesQuery, useDowntimeRulesQuery } from '@/entities/machine'
 import { useOrdersQuery, priorityBgVar, priorityColorVar, priorityLabel } from '@/entities/order'
 import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
 
 const DAY_MS = 86_400_000
+const PAGE_SIZE = 10
 
 /**
  * Ссылка на шахматку с открытием карточки конфликта. Параметры одноразовые — SchedulePage
@@ -25,6 +27,8 @@ function matrixResolveLink(assignmentId: string, jumpIso: string, reason: string
 }
 
 export function ConflictsPage() {
+  const [downtimePage, setDowntimePage] = useState(1)
+  const [riskyPage, setRiskyPage] = useState(1)
   const machinesQuery = useMachinesQuery()
   const downtimeQuery = useDowntimeRulesQuery()
   // Лимит с запасом над объёмом мок-датасета (~22k заказов, см. use-schedule-data.ts)
@@ -97,7 +101,7 @@ export function ConflictsPage() {
                   Заказы, запланированные на станок в интервал, который позже был помечен как простой/ТО — план и факт разошлись, требуется ручное решение.
                 </p>
                 <div className="space-y-1.5">
-                  {downtimeConflicts.slice(0, 30).map((c) => (
+                  {downtimeConflicts.slice((downtimePage - 1) * PAGE_SIZE, downtimePage * PAGE_SIZE).map((c) => (
                     <div key={c.id} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--color-priority-critical)]" />
@@ -119,6 +123,7 @@ export function ConflictsPage() {
                   {downtimeConflicts.length === 0 && <p className="py-4 text-center text-sm text-[var(--color-ink-400)]">Конфликтов не найдено</p>}
                 </div>
               </CardBody>
+              <Pagination page={downtimePage} pageSize={PAGE_SIZE} total={downtimeConflicts.length} onPageChange={setDowntimePage} />
             </Card>
 
             <Card>
@@ -132,7 +137,7 @@ export function ConflictsPage() {
               </CardHeader>
               <CardBody>
                 <div className="space-y-1.5">
-                  {riskyOrders.slice(0, 30).map((order) => {
+                  {riskyOrders.slice((riskyPage - 1) * PAGE_SIZE, riskyPage * PAGE_SIZE).map((order) => {
                     const assignment = assignmentByOrderId.get(order.id)
                     return (
                     <div key={order.id} className="flex items-center justify-between rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm">
@@ -165,6 +170,7 @@ export function ConflictsPage() {
                   {riskyOrders.length === 0 && <p className="py-4 text-center text-sm text-[var(--color-ink-400)]">Угроз не найдено</p>}
                 </div>
               </CardBody>
+              <Pagination page={riskyPage} pageSize={PAGE_SIZE} total={riskyOrders.length} onPageChange={setRiskyPage} />
             </Card>
           </div>
         )}

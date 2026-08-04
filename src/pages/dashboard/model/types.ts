@@ -1,4 +1,4 @@
-import type { OrderPriority } from '@/entities/order'
+import type { OrderPriority, OrderStatus } from '@/entities/order'
 import type { GroupLoadRow, OutputTrendPoint, DowntimeTrendPoint } from '@/widgets/trend-charts'
 
 export interface DashboardSummary {
@@ -19,6 +19,7 @@ export interface DashboardSummary {
     productName: string
     deadline: string
     priority: OrderPriority
+    status: OrderStatus
     groupName: string
     reason: string
   }>

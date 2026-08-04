@@ -48,11 +48,19 @@ export function AttentionOrdersTable({ orders }: { orders: DashboardSummary['att
                   <td className="py-2 pr-3 text-[var(--color-ink-600)]">{order.groupName}</td>
                   <td className="py-2 pr-3 text-[var(--color-ink-600)]">{order.reason}</td>
                   <td className="py-2">
-                    <Link to="/matrix" state={{ jumpToIso: order.deadline }}>
-                      <Button size="sm" variant="secondary">
-                        Открыть
-                      </Button>
-                    </Link>
+                    {order.status === 'needs_reassignment' ? (
+                      <Link to={`/matrix?assignOrder=${order.orderId}`}>
+                        <Button size="sm" variant="primary">
+                          Назначить
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link to="/matrix" state={{ jumpToIso: order.deadline }}>
+                        <Button size="sm" variant="secondary">
+                          Открыть
+                        </Button>
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}

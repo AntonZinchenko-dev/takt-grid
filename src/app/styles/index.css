@@ -35,6 +35,10 @@
   --color-priority-critical-bg: #fee2e2;
   --color-priority-done: #475569;
   --color-priority-done-bg: #f1f5f9;
+
+  /* Статус "нуждается в переназначении" — снят с графика (простой/ТО или изменение станка), не относится к приоритету. */
+  --color-status-reassign: #6d28d9;
+  --color-status-reassign-bg: #ede9fe;
 }
 
 @layer base {

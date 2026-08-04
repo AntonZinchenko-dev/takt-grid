@@ -1,5 +1,5 @@
 export type OrderPriority = 'low' | 'normal' | 'high' | 'critical'
-export type OrderStatus = 'planned' | 'in_progress' | 'at_risk' | 'overdue' | 'done'
+export type OrderStatus = 'planned' | 'in_progress' | 'at_risk' | 'overdue' | 'done' | 'needs_reassignment'
 
 export interface Order {
   id: string

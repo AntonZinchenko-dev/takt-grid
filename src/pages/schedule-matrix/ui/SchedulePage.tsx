@@ -14,6 +14,7 @@ import { ScheduleGrid } from './grid/ScheduleGrid'
 import { SelectionPanel } from './SelectionPanel'
 import { BulkEditPanel } from './BulkEditPanel'
 import { OrderWizard } from './wizard/OrderWizard'
+import { ReassignOrderWizard } from './wizard/ReassignOrderWizard'
 import { OrderDetailDrawer } from './OrderDetailDrawer'
 
 export function SchedulePage() {
@@ -41,6 +42,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const [wizardOpen, setWizardOpen] = useState(false)
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null)
   const [conflictResolve, setConflictResolve] = useState<{ reason?: string } | null>(null)
+  const [reassignOrderId, setReassignOrderId] = useState<string | null>(null)
   const data = useScheduleData(store.anchorDate)
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -56,6 +58,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const openOrder = openAssignment ? data.ordersById.get(openAssignment.orderId) : undefined
   const openMachine = openAssignment ? machinesById.get(openAssignment.machineId) : undefined
   const openWorkshop = openMachine ? workshopsById.get(openMachine.workshopId) : undefined
+  const reassignOrder = reassignOrderId ? data.ordersById.get(reassignOrderId) : undefined
 
   // Переход из "Дашборда"/поиска сразу к нужному моменту в матрице.
   // Зависим от location.key (не []): navigate() к тому же /matrix даёт новый key,
@@ -84,6 +87,22 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
         next.delete('resolve')
         next.delete('jump')
         next.delete('reason')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  // Переход из реестра заказов/дашборда для заказа, снятого с графика — открыть мини-мастер переназначения.
+  useEffect(() => {
+    const orderId = searchParams.get('assignOrder')
+    if (!orderId) return
+    setReassignOrderId(orderId)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('assignOrder')
         return next
       },
       { replace: true },
@@ -139,6 +158,16 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
           autoResolve={Boolean(conflictResolve)}
           conflictReason={conflictResolve?.reason}
           onClose={closeDetailDrawer}
+        />
+      )}
+      {reassignOrder && (
+        <ReassignOrderWizard
+          store={store}
+          order={reassignOrder}
+          products={data.products}
+          machines={machines}
+          downtimeByMachine={data.downtimeByMachine}
+          onClose={() => setReassignOrderId(null)}
         />
       )}
     </main>

@@ -303,6 +303,41 @@ function buildDowntimeRules(machines: Machine[], now: Date): DowntimeRule[] {
   return rules
 }
 
+/**
+ * Снимает с графика назначения станка `machineId`, пересекающие [windowStart, windowEnd),
+ * и помечает их заказы статусом "нуждается в переназначении". Уже выполненные заказы —
+ * исторический факт, простой/ТО или смена группы задним числом их не трогает вовсе
+ * (skipDone), а вот полное удаление станка забирает и их — оставлять назначение на
+ * несуществующий станок нельзя.
+ * Используется и при добавлении простоя/ТО (окно = сам простой), и при удалении станка
+ * (окно = вся временная ось, т.е. -Infinity..Infinity, skipDone: false).
+ */
+export function cascadeUnassign(
+  dataset: MockDataset,
+  machineId: string,
+  windowStart: number,
+  windowEnd: number,
+  options: { skipDone?: boolean } = {},
+): number {
+  const skipDone = options.skipDone ?? true
+  let affected = 0
+  const ordersById = new Map(dataset.orders.map((o) => [o.id, o]))
+  dataset.assignments = dataset.assignments.filter((a) => {
+    if (a.machineId !== machineId) return true
+    const aStart = new Date(a.startAt).getTime()
+    const aEnd = new Date(a.endAt).getTime()
+    if (!(aStart < windowEnd && aEnd > windowStart)) return true
+
+    const order = ordersById.get(a.orderId)
+    if (skipDone && order?.status === 'done') return true
+
+    if (order) order.status = 'needs_reassignment'
+    affected += 1
+    return false
+  })
+  return affected
+}
+
 let cached: MockDataset | null = null
 
 export function getMockDataset(): MockDataset {

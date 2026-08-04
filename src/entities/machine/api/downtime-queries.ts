@@ -18,17 +18,25 @@ export interface CreateDowntimeRuleParams {
   recurrence: DowntimeRule['recurrence']
 }
 
+export interface CreateDowntimeRuleResult {
+  rule: DowntimeRule
+  /** Сколько заказов сняты с графика из-за пересечения с этим простоем и помечены "нуждается в переназначении". */
+  unassignedCount: number
+}
+
 export function useCreateDowntimeRuleMutation() {
   const queryClient = useQueryClient()
-  return useMutation<DowntimeRule, ApiError, CreateDowntimeRuleParams>({
+  return useMutation<CreateDowntimeRuleResult, ApiError, CreateDowntimeRuleParams>({
     mutationFn: (body) =>
-      fetchJson<DowntimeRule>('/api/downtime-rules', {
+      fetchJson<CreateDowntimeRuleResult>('/api/downtime-rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['downtime-rules'] })
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
   })
 }

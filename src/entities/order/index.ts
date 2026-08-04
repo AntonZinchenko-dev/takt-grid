@@ -1,5 +1,6 @@
 export type { Order, OrderPriority, OrderStatus } from './model/types'
-export { priorityLabel, priorityColorVar, priorityBgVar, statusLabel } from './model/presentation'
+export { priorityLabel, priorityColorVar, priorityBgVar, statusLabel, statusColorVar, statusBgVar } from './model/presentation'
 export { useOrdersQuery, type OrdersFilter } from './api/queries'
+export { useOrdersPageQuery, type OrdersPageFilter, type OrdersPageResult } from './api/queries'
 export { useCreateOrderMutation, type CreateOrderParams } from './api/queries'
 export { useDeleteOrderMutation } from './api/queries'

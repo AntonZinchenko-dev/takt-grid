@@ -18,6 +18,7 @@ const STATUS_DOT: Record<OrderStatus, string> = {
   at_risk: 'var(--color-priority-high)',
   overdue: 'var(--color-priority-critical)',
   done: 'var(--color-priority-done)',
+  needs_reassignment: 'var(--color-status-reassign)',
 }
 
 interface SelectionPanelProps {

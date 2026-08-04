@@ -27,6 +27,40 @@ export function useOrdersQuery(filter: OrdersFilter = {}, options: { enabled?: b
   })
 }
 
+export interface OrdersPageFilter {
+  status?: OrderStatus
+  priority?: OrderPriority
+  search?: string
+  page: number
+  pageSize: number
+}
+
+export interface OrdersPageResult {
+  items: Order[]
+  total: number
+}
+
+function buildPageQuery(filter: OrdersPageFilter): string {
+  const params = new URLSearchParams()
+  if (filter.status) params.set('status', filter.status)
+  if (filter.priority) params.set('priority', filter.priority)
+  if (filter.search) params.set('search', filter.search)
+  params.set('page', String(filter.page))
+  params.set('pageSize', String(filter.pageSize))
+  return `?${params.toString()}`
+}
+
+/** Постраничный реестр заказов — отдельно от useOrdersQuery (та отдаёт плоский массив для внутренних выборок "весь датасет"). */
+export function useOrdersPageQuery(filter: OrdersPageFilter) {
+  return useQuery({
+    // Тот же префикс 'orders', что и у useOrdersQuery — иначе существующие invalidateQueries(['orders'])
+    // (создание/удаление заказа, каскад простоя, переназначение) не заденут постраничный реестр.
+    queryKey: ['orders', 'page', filter],
+    queryFn: () => fetchJson<OrdersPageResult>(`/api/orders${buildPageQuery(filter)}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
 export interface CreateOrderParams {
   productId: string
   quantity: number

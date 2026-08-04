@@ -1,8 +1,10 @@
 import { http, HttpResponse, delay } from 'msw'
-import { getMockDataset } from './data/generate-mock-data'
+import { getMockDataset, cascadeUnassign } from './data/generate-mock-data'
 import { buildDashboardSummary } from './data/dashboard-aggregations'
 import { buildAnalyticsSummary } from './data/analytics-aggregations'
 import type { Order } from '@/entities/order'
+import type { Machine } from '@/entities/machine'
+import type { ScheduleAssignment } from '@/entities/schedule-assignment'
 
 const NETWORK_DELAY: [number, number] = [180, 420]
 
@@ -22,6 +24,90 @@ export const handlers = [
     return HttpResponse.json(getMockDataset().machines)
   }),
 
+  /** Добавление станка со страницы "Станки и оборудование". */
+  http.post('/api/machines', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as { name: string; workshopId: string; groupId: string; groupName: string; capacityPerHour: number }
+    const dataset = getMockDataset()
+    const seq = dataset.machines.length + 1 + Math.floor(Math.random() * 1000)
+    const machine: Machine = {
+      id: `m-new-${Date.now()}-${seq}`,
+      name: body.name,
+      workshopId: body.workshopId,
+      groupId: body.groupId,
+      groupName: body.groupName,
+      status: 'running',
+      capacityPerHour: body.capacityPerHour,
+      order: dataset.machines.filter((m) => m.groupId === body.groupId).length + 1,
+    }
+    dataset.machines.push(machine)
+    return HttpResponse.json(machine, { status: 201 })
+  }),
+
+  /**
+   * Редактирование станка. Смена группы делает несовместимыми все текущие назначения,
+   * чьи заказы требуют другую группу по техкарте продукта — они снимаются с графика
+   * и помечаются "нуждается в переназначении", как и при простое/ТО.
+   */
+  http.patch('/api/machines/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<{
+      name: string
+      workshopId: string
+      groupId: string
+      groupName: string
+      capacityPerHour: number
+      status: Machine['status']
+    }>
+    const dataset = getMockDataset()
+    const machine = dataset.machines.find((m) => m.id === params.id)
+    if (!machine) {
+      return HttpResponse.json({ message: 'Станок не найден' }, { status: 404 })
+    }
+
+    const groupChanging = body.groupId !== undefined && body.groupId !== machine.groupId
+
+    if (body.name !== undefined) machine.name = body.name
+    if (body.workshopId !== undefined) machine.workshopId = body.workshopId
+    if (body.groupId !== undefined) machine.groupId = body.groupId
+    if (body.groupName !== undefined) machine.groupName = body.groupName
+    if (body.capacityPerHour !== undefined) machine.capacityPerHour = body.capacityPerHour
+    if (body.status !== undefined) machine.status = body.status
+
+    let unassignedCount = 0
+    if (groupChanging) {
+      const productsById = new Map(dataset.products.map((p) => [p.id, p]))
+      const ordersById = new Map(dataset.orders.map((o) => [o.id, o]))
+      dataset.assignments = dataset.assignments.filter((a) => {
+        if (a.machineId !== machine.id) return true
+        const order = ordersById.get(a.orderId)
+        const product = order ? productsById.get(order.productId) : undefined
+        if (product && product.techMap.machineGroupId === machine.groupId) return true
+        if (order?.status === 'done') return true
+        if (order) order.status = 'needs_reassignment'
+        unassignedCount += 1
+        return false
+      })
+    }
+
+    return HttpResponse.json({ machine, unassignedCount })
+  }),
+
+  /** Удаление станка — все его назначения снимаются с графика, заказы помечаются "нуждается в переназначении". */
+  http.delete('/api/machines/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.machines.findIndex((m) => m.id === params.id)
+    if (index === -1) {
+      return HttpResponse.json({ message: 'Станок не найден' }, { status: 404 })
+    }
+
+    const unassignedCount = cascadeUnassign(dataset, dataset.machines[index]!.id, -Infinity, Infinity, { skipDone: false })
+    dataset.machines.splice(index, 1)
+    dataset.downtimeRules = dataset.downtimeRules.filter((r) => r.machineId !== params.id)
+    return HttpResponse.json({ deleted: true, unassignedCount })
+  }),
+
   http.get('/api/products', async () => {
     await simulateNetwork()
     return HttpResponse.json(getMockDataset().products)
@@ -32,13 +118,17 @@ export const handlers = [
     return HttpResponse.json(getMockDataset().downtimeRules)
   }),
 
+  /**
+   * `page` присутствует → постранично: { items, total } (реестр заказов, см. OrdersPage).
+   * Без `page` → плоский массив, обрезанный `limit` (внутренние выборки "весь датасет" —
+   * ordersById в матрице, дашборд и т.п. — им общий счётчик не нужен, менять их ради него не стоит).
+   */
   http.get('/api/orders', async ({ request }) => {
     await simulateNetwork()
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
     const priority = url.searchParams.get('priority')
     const search = url.searchParams.get('search')?.toLowerCase()
-    const limit = Number(url.searchParams.get('limit') ?? '200')
 
     let orders = getMockDataset().orders
     if (status) orders = orders.filter((o) => o.status === status)
@@ -47,6 +137,15 @@ export const handlers = [
       orders = orders.filter((o) => o.code.toLowerCase().includes(search) || o.productName.toLowerCase().includes(search))
     }
 
+    const pageParam = url.searchParams.get('page')
+    if (pageParam !== null) {
+      const pageSize = Number(url.searchParams.get('pageSize') ?? '20')
+      const page = Math.max(1, Number(pageParam))
+      const start = (page - 1) * pageSize
+      return HttpResponse.json({ items: orders.slice(start, start + pageSize), total: orders.length })
+    }
+
+    const limit = Number(url.searchParams.get('limit') ?? '200')
     return HttpResponse.json(orders.slice(0, limit))
   }),
 
@@ -85,6 +184,43 @@ export const handlers = [
     const days = Number(url.searchParams.get('days') ?? '30')
     const dataset = getMockDataset()
     return HttpResponse.json(buildAnalyticsSummary(dataset, new Date(), days))
+  }),
+
+  /**
+   * Назначение станка/времени существующему заказу без назначения — заказ, снятый
+   * с графика простоем/ТО или сменой группы станка, возвращается в работу отсюда
+   * (мини-мастер переназначения в матрице), а не через мастер создания нового заказа.
+   */
+  http.post('/api/assignments', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as { orderId: string; machineId: string; startAt: string; endAt: string; plannedQuantity: number }
+    const dataset = getMockDataset()
+    const order = dataset.orders.find((o) => o.id === body.orderId)
+    if (!order) {
+      return HttpResponse.json({ message: 'Заказ не найден' }, { status: 404 })
+    }
+
+    const newStart = new Date(body.startAt).getTime()
+    const newEnd = new Date(body.endAt).getTime()
+    const conflict = dataset.assignments.find(
+      (a) => a.machineId === body.machineId && new Date(a.startAt).getTime() < newEnd && new Date(a.endAt).getTime() > newStart,
+    )
+    if (conflict) {
+      return HttpResponse.json({ message: 'Станок занят в это время — обновите список слотов' }, { status: 409 })
+    }
+
+    const assignment: ScheduleAssignment = {
+      id: `a-new-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      orderId: body.orderId,
+      machineId: body.machineId,
+      startAt: body.startAt,
+      endAt: body.endAt,
+      plannedQuantity: body.plannedQuantity,
+    }
+    dataset.assignments.push(assignment)
+    if (order.status === 'needs_reassignment') order.status = 'planned'
+
+    return HttpResponse.json(assignment, { status: 201 })
   }),
 
   /**
@@ -208,7 +344,11 @@ export const handlers = [
     return HttpResponse.json({ deleted: true })
   }),
 
-  /** Добавление простоя/ТО станка со страницы "Станки и оборудование". */
+  /**
+   * Добавление простоя/ТО станка со страницы "Станки и оборудование".
+   * Заказы, чьи назначения пересеклись с новым простоем, снимаются с графика и
+   * помечаются "нуждается в переназначении" — план и факт не должны расходиться молча.
+   */
   http.post('/api/downtime-rules', async ({ request }) => {
     await simulateNetwork()
     const body = (await request.json()) as { machineId: string; startAt: string; endAt: string; reason: string; recurrence: 'once' | 'daily' | 'weekly' }
@@ -222,7 +362,8 @@ export const handlers = [
       recurrence: body.recurrence,
     }
     dataset.downtimeRules.push(rule)
-    return HttpResponse.json(rule, { status: 201 })
+    const unassignedCount = cascadeUnassign(dataset, body.machineId, new Date(body.startAt).getTime(), new Date(body.endAt).getTime())
+    return HttpResponse.json({ rule, unassignedCount }, { status: 201 })
   }),
 
   /** Дни, вручную переключённые относительно дефолтного статуса будни/выходной (вкладка "Календарь"). */

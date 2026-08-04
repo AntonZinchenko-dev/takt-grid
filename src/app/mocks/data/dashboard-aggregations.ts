@@ -87,19 +87,25 @@ export function buildDashboardSummary(dataset: MockDataset, now: Date): Dashboar
   const groupNameById = new Map(groups)
 
   const attentionOrders = orders
-    .filter((o) => o.status === 'at_risk' || o.status === 'overdue')
+    .filter((o) => o.status === 'at_risk' || o.status === 'overdue' || o.status === 'needs_reassignment')
     .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
     .slice(0, 6)
     .map((o) => {
       const product = productById.get(o.productId)
       const groupName = product ? (groupNameById.get(product.techMap.machineGroupId) ?? '—') : '—'
-      const reason = o.status === 'overdue' ? 'Просрочен' : REASONS_AT_RISK[hashString(o.id) % REASONS_AT_RISK.length]
+      const reason =
+        o.status === 'overdue'
+          ? 'Просрочен'
+          : o.status === 'needs_reassignment'
+            ? 'Снят с графика — назначьте станок'
+            : REASONS_AT_RISK[hashString(o.id) % REASONS_AT_RISK.length]
       return {
         orderId: o.id,
         code: o.code,
         productName: o.productName,
         deadline: o.deadline,
         priority: o.priority,
+        status: o.status,
         groupName,
         reason: reason ?? 'Риск срыва',
       }

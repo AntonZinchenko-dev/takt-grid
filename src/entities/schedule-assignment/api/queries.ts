@@ -53,6 +53,31 @@ export function useUpdateAssignmentResultMutation() {
   })
 }
 
+export interface CreateAssignmentParams {
+  orderId: string
+  machineId: string
+  startAt: string
+  endAt: string
+  plannedQuantity: number
+}
+
+/** Назначает станок/время заказу без назначения (переназначение после снятия с графика). */
+export function useCreateAssignmentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation<ScheduleAssignment, ApiError, CreateAssignmentParams>({
+    mutationFn: (body) =>
+      fetchJson<ScheduleAssignment>('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+  })
+}
+
 export interface BulkUpdateParams {
   updates: Array<{ id: string; plannedQuantity: number }>
 }
