@@ -235,8 +235,8 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
           )}
 
           {actionMode === 'delete' && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-2">
-              <p className="text-xs font-medium text-red-700">Удалить {summary.orders.length} заказ(ов) безвозвратно?</p>
+            <div className="rounded-lg border border-[var(--color-priority-critical)] bg-[var(--color-priority-critical-bg)] p-2">
+              <p className="text-xs font-medium text-[var(--color-priority-critical)]">Удалить {summary.orders.length} заказ(ов) безвозвратно?</p>
               <div className="mt-2 flex gap-1.5">
                 <Button size="sm" variant="danger" disabled={actionPending} onClick={handleDelete} className="flex-1 justify-center">
                   {actionPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

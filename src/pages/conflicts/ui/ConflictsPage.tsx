@@ -13,7 +13,7 @@ import { useOrdersQuery, priorityBgVar, priorityColorVar, priorityLabel } from '
 import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
 
 const DAY_MS = 86_400_000
-const PAGE_SIZE = 10
+const PAGE_SIZE = 15
 
 /**
  * Ссылка на шахматку с открытием карточки конфликта. Параметры одноразовые — SchedulePage

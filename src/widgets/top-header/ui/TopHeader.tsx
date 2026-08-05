@@ -80,7 +80,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
             if (e.key === 'Escape') close()
           }}
           placeholder="Поиск заказов, станков, продуктов..."
-          className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] pl-9 pr-8 text-sm text-[var(--color-ink-900)] outline-none placeholder:text-[var(--color-ink-400)] focus:border-[var(--color-brand-500)] focus:bg-white"
+          className="h-9 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] pl-9 pr-8 text-sm text-[var(--color-ink-900)] outline-none placeholder:text-[var(--color-ink-400)] focus:border-[var(--color-brand-500)] focus:bg-[var(--color-surface)]"
         />
         {query && (
           <button

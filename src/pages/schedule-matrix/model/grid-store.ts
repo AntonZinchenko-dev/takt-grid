@@ -69,11 +69,12 @@ export class GridStore {
   private selecting = false
   private selectionAnchor: { row: number; hour: number } | null = null
 
-  constructor(workshops: Workshop[], machines: Machine[], now: Date = new Date()) {
+  constructor(workshops: Workshop[], machines: Machine[], now: Date = new Date(), initialZoom?: ZoomLevel) {
     this.workshops = workshops
     this.machines = machines
     this.epochMs = computeEpoch(now)
     this.anchorDate = now
+    if (initialZoom) this.zoom = initialZoom
     makeAutoObservable(this, { epochMs: false }, { autoBind: true })
   }
 

@@ -21,7 +21,7 @@ export function RowLabelCell({ row, top, height, collapsed, onToggleWorkshop }: 
     return (
       <button
         onClick={() => onToggleWorkshop?.(row.workshop.id)}
-        className="absolute left-0 flex w-full items-center gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-canvas)] px-3 text-left text-[13px] font-semibold text-[var(--color-ink-900)] hover:bg-slate-100"
+        className="absolute left-0 flex w-full items-center gap-1.5 border-b border-[var(--color-border)] bg-[var(--color-canvas)] px-3 text-left text-[13px] font-semibold text-[var(--color-ink-900)] hover:bg-[var(--color-border)]"
         style={{ top, height }}
       >
         {collapsed ? <ChevronRight className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}

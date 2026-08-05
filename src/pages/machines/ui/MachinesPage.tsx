@@ -18,7 +18,7 @@ import type { MachineGroupOption } from '../model/types'
 const STATUS_LABEL: Record<Machine['status'], string> = { running: 'Работает', idle: 'Простой', down: 'Авария' }
 const STATUS_COLOR: Record<Machine['status'], string> = { running: '#16a34a', idle: '#eab308', down: '#dc2626' }
 const DAY_MS = 86_400_000
-const PAGE_SIZE = 20
+const PAGE_SIZE = 15
 
 export function MachinesPage() {
   const machinesQuery = useMachinesQuery()

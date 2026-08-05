@@ -40,7 +40,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
         aria-label="Фильтр по цеху"
         value={store.filters.workshopId ?? 'all'}
         onChange={(e) => store.setWorkshopFilter(e.target.value === 'all' ? null : e.target.value)}
-        className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-sm text-[var(--color-ink-900)]"
+        className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-sm text-[var(--color-ink-900)]"
       >
         <option value="all">Цех: Все</option>
         {workshops.map((w) => (
@@ -53,7 +53,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
         aria-label="Фильтр по статусу заказа"
         value={store.filters.status ?? 'all'}
         onChange={(e) => store.setStatusFilter(e.target.value === 'all' ? null : (e.target.value as OrderStatus))}
-        className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-sm text-[var(--color-ink-900)]"
+        className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-sm text-[var(--color-ink-900)]"
       >
         <option value="all">Статус: Все</option>
         {STATUS_OPTIONS.map((s) => (
@@ -66,7 +66,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
         aria-label="Фильтр по приоритету"
         value={store.filters.priority ?? 'all'}
         onChange={(e) => store.setPriorityFilter(e.target.value === 'all' ? null : (e.target.value as OrderPriority))}
-        className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-2.5 text-sm text-[var(--color-ink-900)]"
+        className="h-9 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 text-sm text-[var(--color-ink-900)]"
       >
         <option value="all">Приоритет: Все</option>
         {PRIORITY_OPTIONS.map((p) => (
@@ -84,7 +84,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
               onClick={() => store.setZoom(level)}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium transition-colors',
-                store.zoom === level ? 'bg-[var(--color-brand-600)] text-white' : 'bg-white text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]',
+                store.zoom === level ? 'bg-[var(--color-brand-600)] text-white' : 'bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]',
               )}
             >
               {ZOOM_LABEL[level]}
@@ -96,11 +96,11 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
           <button
             onClick={() => shiftDate(-1)}
             title="Предыдущий день"
-            className="flex h-9 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]"
+            className="flex h-9 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <label className="relative flex h-9 items-center rounded-lg border border-[var(--color-border)] bg-white px-2.5">
+          <label className="relative flex h-9 items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5">
             <CalendarIcon className="pointer-events-none h-3.5 w-3.5 text-[var(--color-ink-400)]" />
             <input
               type="date"
@@ -118,7 +118,7 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
           <button
             onClick={() => shiftDate(1)}
             title="Следующий день"
-            className="flex h-9 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-white text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]"
+            className="flex h-9 w-8 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

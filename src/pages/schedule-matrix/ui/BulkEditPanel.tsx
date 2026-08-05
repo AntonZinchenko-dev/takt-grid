@@ -115,7 +115,7 @@ export const BulkEditPanel = observer(function BulkEditPanel({
                 onClick={() => setMode(m)}
                 className={cn(
                   'flex-1 px-3 py-1.5 text-xs font-medium transition-colors',
-                  mode === m ? 'bg-[var(--color-brand-600)] text-white' : 'bg-white text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]',
+                  mode === m ? 'bg-[var(--color-brand-600)] text-white' : 'bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]',
                 )}
               >
                 {label}

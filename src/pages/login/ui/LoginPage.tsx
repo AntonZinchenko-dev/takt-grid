@@ -7,6 +7,7 @@ import { Button } from '@/shared/ui/Button'
 export function LoginPage() {
   const user = useAuthStore((s) => s.user)
   const login = useAuthStore((s) => s.login)
+  const homeScreen = useAuthStore((s) => s.preferences.homeScreen)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -16,11 +17,16 @@ export function LoginPage() {
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
 
-  // Уже авторизован — форма логина не нужна, возвращаем туда, откуда пришли (см. RequireAuth).
-  if (user) {
-    const from = (location.state as { from?: string } | null)?.from ?? '/'
-    return <Navigate to={from} replace />
+  // Куда вести после входа: если пришли по прямой ссылке на защищённую страницу (RequireAuth
+  // сохранил её в state.from) — туда, иначе на экран из "Рабочих предпочтений" профиля.
+  const destinationAfterLogin = () => {
+    const from = (location.state as { from?: string } | null)?.from
+    if (from) return from
+    return homeScreen === 'matrix' ? '/matrix' : '/'
   }
+
+  // Уже авторизован — форма логина не нужна, возвращаем туда, откуда пришли.
+  if (user) return <Navigate to={destinationAfterLogin()} replace />
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -34,8 +40,7 @@ export function LoginPage() {
         setError(true)
         return
       }
-      const from = (location.state as { from?: string } | null)?.from ?? '/'
-      navigate(from, { replace: true })
+      navigate(destinationAfterLogin(), { replace: true })
     }, 300)
   }
 

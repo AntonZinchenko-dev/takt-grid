@@ -41,6 +41,71 @@
   --color-status-reassign-bg: #ede9fe;
 }
 
+/* "Плотность интерфейса" (см. Профиль → Рабочие предпочтения) — атрибут data-density на <html>
+   (см. AppProviders/PreferencesSync) переопределяет отступы Card/CardHeader/CardBody И базовый
+   размер шрифта всего приложения разом: почти весь текст и большинство отступов в Tailwind
+   заданы в rem, а rem всегда считается от font-size <html> — так что html { font-size: calc(...) }
+   ниже масштабирует одним рычагом и текст, и spacing везде, кроме матрицы (её сетка/зум считаются
+   в чистых px в JS, поэтому не "поплывёт" от смены масштаба шрифта). */
+:root {
+  --density-card-x: 1.25rem;
+  --density-card-top: 1rem;
+  --density-card-bottom: 1.25rem;
+  --density-card-body-top: 0.75rem;
+  --density-font-scale: 1;
+}
+[data-density='compact'] {
+  --density-card-x: 0.875rem;
+  --density-card-top: 0.625rem;
+  --density-card-bottom: 0.75rem;
+  --density-card-body-top: 0.5rem;
+  --density-font-scale: 0.9;
+}
+[data-density='large'] {
+  --density-card-x: 1.75rem;
+  --density-card-top: 1.5rem;
+  --density-card-bottom: 1.75rem;
+  --density-card-body-top: 1.125rem;
+  --density-font-scale: 1.125;
+}
+
+html {
+  font-size: calc(16px * var(--density-font-scale, 1));
+}
+
+/* "Тема" (см. Профиль → Рабочие предпочтения) — атрибут data-theme на <html> (см. AppProviders/ThemeSync)
+   переопределяет те же токены из @theme выше. Компоненты используют var(--color-*) почти везде,
+   так что переопределение каскадит само; точечные исключения (буквальные bg-white/text-red-* и т.п.)
+   заменены на var(--color-*) там, где иначе получился бы светлый "остров" на тёмном фоне. */
+:root[data-theme='dark'] {
+  --color-brand-50: #16233d;
+  --color-brand-100: #1c2c4a;
+  --color-brand-500: #60a5fa;
+  --color-brand-600: #3b82f6;
+  --color-brand-700: #2563eb;
+
+  --color-canvas: #0b1120;
+  --color-surface: #161f32;
+  --color-border: #2a3750;
+  --color-ink-900: #f1f5f9;
+  --color-ink-600: #b6c2d1;
+  --color-ink-400: #8ea0b8;
+
+  --color-priority-low: #4ade80;
+  --color-priority-low-bg: #113321;
+  --color-priority-normal: #60a5fa;
+  --color-priority-normal-bg: #16233d;
+  --color-priority-high: #fb923c;
+  --color-priority-high-bg: #3a2510;
+  --color-priority-critical: #f87171;
+  --color-priority-critical-bg: #3a1616;
+  --color-priority-done: #93a3b8;
+  --color-priority-done-bg: #1e2836;
+
+  --color-status-reassign: #c4b5fd;
+  --color-status-reassign-bg: #271f45;
+}
+
 @layer base {
   html,
   body,

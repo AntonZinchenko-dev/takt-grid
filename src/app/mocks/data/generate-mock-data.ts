@@ -3,6 +3,11 @@ import type { Machine, MachineStatus, DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import type { Order, OrderPriority, OrderStatus, OrderEvent } from '@/entities/order'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
+import type { Shift, WorkCalendarSettings } from '@/entities/shift'
+import type { Role, Group, TeamMember } from '@/entities/user'
+import { PERMISSIONS } from '@/entities/user'
+import type { NotificationChannel, NotificationRule, NotificationTemplate } from '@/entities/notification-setting'
+import type { ApiKey, Webhook, ExternalIntegration } from '@/entities/integration'
 import { RANGE_START_DAYS, RANGE_END_DAYS } from '@/shared/lib/schedule-window'
 
 /**
@@ -66,6 +71,17 @@ export interface MockDataset {
   orderEvents: OrderEvent[]
   /** Даты (yyyy-MM-dd), вручную переключённые относительно дефолтного статуса будни/выходной. */
   holidayOverrides: Set<string>
+  shifts: Shift[]
+  workCalendar: WorkCalendarSettings
+  roles: Role[]
+  groups: Group[]
+  teamMembers: TeamMember[]
+  notificationChannels: NotificationChannel[]
+  notificationRules: NotificationRule[]
+  notificationTemplates: NotificationTemplate[]
+  apiKeys: ApiKey[]
+  webhooks: Webhook[]
+  integrations: ExternalIntegration[]
   generatedAt: string
 }
 
@@ -358,6 +374,112 @@ export function cascadeUnassign(
   return affected
 }
 
+function buildShifts(): Shift[] {
+  return [
+    { id: 'shift-a', name: 'Смена А (Основная)', color: '#2563eb', startTime: '08:00', endTime: '17:00', breakStart: '12:00', breakEnd: '12:30' },
+    { id: 'shift-b', name: 'Смена Б (Вечерняя)', color: '#16a34a', startTime: '16:00', endTime: '00:00', breakStart: '20:00', breakEnd: '20:30' },
+    { id: 'shift-c', name: 'Смена В (Ночная)', color: '#f59e0b', startTime: '00:00', endTime: '08:00', breakStart: '03:30', breakEnd: '04:00' },
+  ]
+}
+
+function buildWorkCalendar(): WorkCalendarSettings {
+  return { workingDays: [0, 1, 2, 3, 4] }
+}
+
+function buildRoles(): Role[] {
+  const allKeys = PERMISSIONS.map((p) => p.key)
+  return [
+    { id: 'admin', name: 'Администратор', color: 'var(--color-priority-critical)', bg: 'var(--color-priority-critical-bg)', permissions: allKeys },
+    { id: 'planner', name: 'Планировщик', color: 'var(--color-brand-600)', bg: 'var(--color-brand-50)', permissions: ['planning', 'bulk_edit', 'analytics', 'export', 'machines'] },
+    { id: 'operator', name: 'Оператор', color: 'var(--color-priority-normal)', bg: 'var(--color-priority-normal-bg)', permissions: ['planning', 'analytics'] },
+    { id: 'viewer', name: 'Просмотр', color: 'var(--color-ink-600)', bg: 'var(--color-canvas)', permissions: ['analytics'] },
+  ]
+}
+
+function buildTeamMembers(): TeamMember[] {
+  return [
+    { id: 'tm-1', name: 'Иван Петров', email: 'i.petrov@company.ru', phone: '+7 (900) 111-11-11', roleId: 'planner', groupIds: ['grp-planning'], status: 'active' },
+    { id: 'tm-2', name: 'Ольга Смирнова', email: 'o.smirnova@company.ru', phone: '+7 (900) 222-22-22', roleId: 'admin', groupIds: ['grp-admin'], status: 'active' },
+    { id: 'tm-3', name: 'Дмитрий Кузнецов', email: 'd.kuznetsov@company.ru', phone: '+7 (900) 333-33-33', roleId: 'viewer', groupIds: ['grp-shop1'], status: 'active' },
+    { id: 'tm-4', name: 'Анна Волкова', email: 'a.volkova@company.ru', phone: '+7 (900) 444-44-44', roleId: 'operator', groupIds: ['grp-shop1'], status: 'active' },
+    { id: 'tm-5', name: 'Сергей Иванов', email: 's.ivanov@company.ru', phone: '+7 (900) 555-55-55', roleId: 'operator', groupIds: ['grp-shop2'], status: 'active' },
+    { id: 'tm-6', name: 'Мария Новикова', email: 'm.novikova@company.ru', phone: '+7 (900) 666-66-66', roleId: 'planner', groupIds: ['grp-planning'], status: 'invited' },
+    { id: 'tm-7', name: 'Павел Соколов', email: 'p.sokolov@company.ru', phone: '+7 (900) 777-77-77', roleId: 'viewer', groupIds: ['grp-shop2'], status: 'disabled' },
+    { id: 'tm-8', name: 'Екатерина Морозова', email: 'e.morozova@company.ru', phone: '+7 (900) 888-88-88', roleId: 'operator', groupIds: ['grp-shop1'], status: 'active' },
+  ]
+}
+
+function buildGroups(): Group[] {
+  return [
+    { id: 'grp-admin', name: 'Администрация', memberIds: ['tm-2'] },
+    { id: 'grp-planning', name: 'Плановый отдел', memberIds: ['tm-1', 'tm-6'] },
+    { id: 'grp-shop1', name: 'Цех №1 — Металлообработка', memberIds: ['tm-3', 'tm-4', 'tm-8'] },
+    { id: 'grp-shop2', name: 'Цех №2 — Покраска', memberIds: ['tm-5', 'tm-7'] },
+  ]
+}
+
+function buildNotificationChannels(): NotificationChannel[] {
+  return [
+    { id: 'ch-email', type: 'email', name: 'Email', enabled: true, target: 'notify@company.ru' },
+    { id: 'ch-push', type: 'push', name: 'Push-уведомления', enabled: true, target: '—' },
+    { id: 'ch-sms', type: 'sms', name: 'SMS', enabled: false, target: '+7 (900) 000-00-00' },
+    { id: 'ch-telegram', type: 'telegram', name: 'Telegram', enabled: true, target: '@taktgrid_bot' },
+  ]
+}
+
+function buildNotificationRules(): NotificationRule[] {
+  return [
+    { id: 'rule-1', event: 'order_at_risk', label: 'Риск срыва дедлайна заказа', channelIds: ['ch-email', 'ch-push', 'ch-telegram'], enabled: true, thresholdHours: 6 },
+    { id: 'rule-2', event: 'order_overdue', label: 'Заказ просрочен', channelIds: ['ch-email', 'ch-push', 'ch-telegram'], enabled: true },
+    { id: 'rule-3', event: 'machine_down', label: 'Авария станка', channelIds: ['ch-email', 'ch-push', 'ch-sms', 'ch-telegram'], enabled: true },
+    { id: 'rule-4', event: 'machine_downtime_scheduled', label: 'Плановый простой/ТО станка', channelIds: ['ch-email'], enabled: true },
+    { id: 'rule-5', event: 'conflict_detected', label: 'Обнаружен конфликт в графике', channelIds: ['ch-push', 'ch-telegram'], enabled: true },
+    { id: 'rule-6', event: 'order_created', label: 'Новый заказ создан', channelIds: ['ch-push'], enabled: false },
+    { id: 'rule-7', event: 'order_completed', label: 'Заказ выполнен', channelIds: ['ch-email'], enabled: false },
+    { id: 'rule-8', event: 'assignment_reassigned', label: 'Назначение перенесено', channelIds: ['ch-push'], enabled: true },
+    { id: 'rule-9', event: 'defect_rate_exceeded', label: 'Превышен процент брака', channelIds: ['ch-email', 'ch-telegram'], enabled: true },
+    { id: 'rule-10', event: 'shift_not_filled', label: 'Смена не укомплектована', channelIds: ['ch-push', 'ch-sms'], enabled: false },
+    { id: 'rule-11', event: 'nightly_report', label: 'Ночной сводный отчёт', channelIds: ['ch-email'], enabled: false },
+    { id: 'rule-12', event: 'new_user_invited', label: 'Приглашён новый пользователь', channelIds: ['ch-email'], enabled: true },
+  ]
+}
+
+function buildNotificationTemplates(): NotificationTemplate[] {
+  return [
+    { id: 'tmpl-1', event: 'order_at_risk', name: 'Риск срыва дедлайна', subject: 'Заказ {{order_code}} под угрозой срыва', body: 'Заказ {{order_code}} должен быть завершён до {{deadline}}, но по текущему графику не укладывается. Проверьте назначение.' },
+    { id: 'tmpl-2', event: 'order_overdue', name: 'Заказ просрочен', subject: 'Заказ {{order_code}} просрочен', body: 'Срок исполнения заказа {{order_code}} истёк {{deadline}}. Требуется немедленное решение.' },
+    { id: 'tmpl-3', event: 'machine_down', name: 'Авария станка', subject: 'Авария: {{machine_name}}', body: 'Станок {{machine_name}} перешёл в статус "Авария". Затронуто заказов: {{affected_orders}}.' },
+    { id: 'tmpl-4', event: 'conflict_detected', name: 'Конфликт в графике', subject: 'Конфликт в графике на {{machine_name}}', body: 'Обнаружено пересечение назначений на станке {{machine_name}} в интервале {{time_range}}.' },
+    { id: 'tmpl-5', event: 'order_completed', name: 'Заказ выполнен', subject: 'Заказ {{order_code}} выполнен', body: 'Заказ {{order_code}} успешно завершён на станке {{machine_name}}.' },
+    { id: 'tmpl-6', event: 'defect_rate_exceeded', name: 'Превышен брак', subject: 'Брак превышен на {{machine_name}}', body: 'На станке {{machine_name}} зафиксирован процент брака выше допустимого порога.' },
+    { id: 'tmpl-7', event: 'nightly_report', name: 'Ночной отчёт', subject: 'Сводка за {{date}}', body: 'Ежедневная сводка по выполнению плана за {{date}} во вложении.' },
+    { id: 'tmpl-8', event: 'new_user_invited', name: 'Приглашение пользователя', subject: 'Вас пригласили в TaktGrid', body: 'Здравствуйте, {{user_name}}! Для вас создана учётная запись в TaktGrid с ролью «{{role_name}}».' },
+  ]
+}
+
+function buildApiKeys(now: Date): ApiKey[] {
+  return [
+    { id: 'key-1', label: 'Продакшн интеграция', tokenMasked: 'tg_live_••••••••a41c', createdAt: new Date(now.getTime() - 30 * DAY).toISOString() },
+    { id: 'key-2', label: 'Тестовый ключ', tokenMasked: 'tg_test_••••••••7b02', createdAt: new Date(now.getTime() - 5 * DAY).toISOString() },
+  ]
+}
+
+function buildWebhooks(now: Date): Webhook[] {
+  return [
+    { id: 'wh-1', url: 'https://erp.company.ru/hooks/taktgrid', event: 'order.completed', enabled: true, createdAt: new Date(now.getTime() - 20 * DAY).toISOString() },
+    { id: 'wh-2', url: 'https://warehouse.company.ru/api/sync', event: 'order.created', enabled: false, createdAt: new Date(now.getTime() - 12 * DAY).toISOString() },
+  ]
+}
+
+function buildIntegrations(now: Date): ExternalIntegration[] {
+  return [
+    { id: 'int-1c', name: '1С:Предприятие', description: 'Синхронизация заказов и остатков', status: 'connected', connectedAt: new Date(now.getTime() - 90 * DAY).toISOString() },
+    { id: 'int-telegram', name: 'Telegram Bot', description: 'Уведомления в чат цеха', status: 'connected', connectedAt: new Date(now.getTime() - 60 * DAY).toISOString() },
+    { id: 'int-smtp', name: 'SMTP-сервер', description: 'Исходящая почта для уведомлений', status: 'connected', connectedAt: new Date(now.getTime() - 60 * DAY).toISOString() },
+    { id: 'int-wms', name: 'Внешний склад (WMS)', description: 'Обмен остатками с внешним складом', status: 'disconnected', connectedAt: null },
+  ]
+}
+
 let cached: MockDataset | null = null
 
 export function getMockDataset(): MockDataset {
@@ -379,6 +501,17 @@ export function getMockDataset(): MockDataset {
     downtimeRules,
     orderEvents: events,
     holidayOverrides: new Set(),
+    shifts: buildShifts(),
+    workCalendar: buildWorkCalendar(),
+    roles: buildRoles(),
+    groups: buildGroups(),
+    teamMembers: buildTeamMembers(),
+    notificationChannels: buildNotificationChannels(),
+    notificationRules: buildNotificationRules(),
+    notificationTemplates: buildNotificationTemplates(),
+    apiKeys: buildApiKeys(now),
+    webhooks: buildWebhooks(now),
+    integrations: buildIntegrations(now),
     generatedAt: now.toISOString(),
   }
   return cached

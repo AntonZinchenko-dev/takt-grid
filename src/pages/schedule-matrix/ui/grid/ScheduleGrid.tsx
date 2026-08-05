@@ -281,7 +281,7 @@ export const ScheduleGrid = observer(function ScheduleGrid({
   return (
     <div className="relative flex-1 overflow-hidden border-t border-[var(--color-border)] bg-[var(--color-surface)]">
       {dropError && (
-        <div className="absolute right-4 top-3 z-40 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 shadow-md">
+        <div className="absolute right-4 top-3 z-40 rounded-lg border border-[var(--color-priority-critical)] bg-[var(--color-priority-critical-bg)] px-3 py-2 text-xs font-medium text-[var(--color-priority-critical)] shadow-md">
           {dropError}
         </div>
       )}

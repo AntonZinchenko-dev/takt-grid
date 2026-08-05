@@ -56,7 +56,7 @@ export function ProfileMenu() {
               logout()
               navigate('/login', { replace: true })
             }}
-            className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+            className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm text-[var(--color-priority-critical)] hover:bg-[var(--color-priority-critical-bg)]"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             Выйти

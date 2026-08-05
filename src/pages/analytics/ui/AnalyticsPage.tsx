@@ -33,7 +33,7 @@ export function AnalyticsPage() {
               <button
                 key={p}
                 onClick={() => setDays(p)}
-                className={cn('px-3 py-1.5 text-xs font-medium transition-colors', days === p ? 'bg-[var(--color-brand-600)] text-white' : 'bg-white text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]')}
+                className={cn('px-3 py-1.5 text-xs font-medium transition-colors', days === p ? 'bg-[var(--color-brand-600)] text-white' : 'bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]')}
               >
                 {p} дней
               </button>

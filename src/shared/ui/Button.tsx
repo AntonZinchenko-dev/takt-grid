@@ -8,9 +8,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary: 'bg-[var(--color-brand-600)] text-white hover:bg-[var(--color-brand-700)]',
-  secondary: 'bg-white text-[var(--color-ink-900)] border border-[var(--color-border)] hover:bg-[var(--color-canvas)]',
+  secondary: 'bg-[var(--color-surface)] text-[var(--color-ink-900)] border border-[var(--color-border)] hover:bg-[var(--color-canvas)]',
   ghost: 'text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]',
-  danger: 'bg-white text-red-600 border border-red-200 hover:bg-red-50',
+  danger:
+    'bg-[var(--color-surface)] text-[var(--color-priority-critical)] border border-[var(--color-priority-critical)] hover:bg-[var(--color-priority-critical-bg)]',
 }
 
 const SIZE_CLASSES: Record<NonNullable<ButtonProps['size']>, string> = {

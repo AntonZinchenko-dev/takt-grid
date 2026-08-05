@@ -9,8 +9,17 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Pagination } from '@/shared/ui/Pagination'
 import { useOrdersPageQuery, priorityBgVar, priorityColorVar, priorityLabel, statusLabel, type Order, type OrderPriority, type OrderStatus } from '@/entities/order'
+import { useRiskThresholdHours } from '@/entities/notification-setting'
 import { cn } from '@/shared/lib/cn'
 import { OrderReportDrawer } from './OrderReportDrawer'
+
+const HOUR_MS = 3_600_000
+
+/** Доп. подсветка дедлайна по порогу из вкладки Настройки → Уведомления → Правила (независимо от статуса at_risk/overdue, зафиксированного при генерации мока). */
+function isDeadlineSoon(order: Order, thresholdHours: number): boolean {
+  if (order.status === 'done' || order.status === 'overdue') return false
+  return new Date(order.deadline).getTime() - Date.now() < thresholdHours * HOUR_MS
+}
 
 const STATUS_DOT: Record<OrderStatus, string> = {
   planned: 'var(--color-priority-normal)',
@@ -23,7 +32,7 @@ const STATUS_DOT: Record<OrderStatus, string> = {
 
 const STATUS_OPTIONS: OrderStatus[] = ['planned', 'in_progress', 'at_risk', 'overdue', 'done', 'needs_reassignment']
 const PRIORITY_OPTIONS: OrderPriority[] = ['low', 'normal', 'high', 'critical']
-const PAGE_SIZE = 20
+const PAGE_SIZE = 15
 
 export function OrdersPage() {
   // Переход с дашборда ("Быстрые фильтры") — сразу применить статус/приоритет.
@@ -35,6 +44,7 @@ export function OrdersPage() {
   const [priority, setPriority] = useState<OrderPriority | 'all'>(incoming?.initialPriority ?? 'all')
   const [page, setPage] = useState(1)
   const [reportOrder, setReportOrder] = useState<Order | null>(null)
+  const riskThresholdHours = useRiskThresholdHours()
 
   // Переход из карточки заказа в матрице (клик по номеру) — сразу открыть отчёт по заказу.
   const handledReportKeyRef = useRef<string | null>(null)
@@ -149,7 +159,15 @@ export function OrdersPage() {
                           {statusLabel(order.status)}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 tabular-nums text-[var(--color-ink-600)]">{format(new Date(order.deadline), 'd MMM yyyy', { locale: ru })}</td>
+                      <td
+                        className={cn(
+                          'px-4 py-2.5 tabular-nums',
+                          isDeadlineSoon(order, riskThresholdHours) ? 'font-semibold text-[var(--color-priority-high)]' : 'text-[var(--color-ink-600)]',
+                        )}
+                        title={isDeadlineSoon(order, riskThresholdHours) ? `Дедлайн ближе порога риска (${riskThresholdHours} ч) — см. Настройки → Уведомления` : undefined}
+                      >
+                        {format(new Date(order.deadline), 'd MMM yyyy', { locale: ru })}
+                      </td>
                       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                         {order.status === 'needs_reassignment' && (
                           <Link to={`/matrix?assignOrder=${order.id}`}>

@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { Loader2 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
+import { useAuthStore } from '@/entities/session'
 import { useWorkshopsQuery } from '@/entities/workshop'
 import type { Workshop } from '@/entities/workshop'
 import { useMachinesQuery } from '@/entities/machine'
@@ -39,7 +40,10 @@ export function SchedulePage() {
 }
 
 const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops, machines }: { workshops: Workshop[]; machines: Machine[] }) {
-  const [store] = useState(() => new GridStore(workshops, machines))
+  // Начальный масштаб матрицы — из "Рабочих предпочтений" профиля; читаем один раз при монтировании,
+  // дальнейшие переключения зума пользователем в сторе живут независимо.
+  const defaultZoomRef = useRef(useAuthStore.getState().preferences.defaultZoom)
+  const [store] = useState(() => new GridStore(workshops, machines, new Date(), defaultZoomRef.current))
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null)
@@ -103,6 +107,8 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
     if (jumpToIso) store.jumpToDate(new Date(jumpToIso))
     setOpenAssignmentId(resolveAssignmentId)
     setConflictResolve({ reason: reason ?? undefined })
+    store.setHighlightedAssignment(resolveAssignmentId)
+    window.setTimeout(() => store.setHighlightedAssignment(null), 2500)
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)

@@ -37,7 +37,7 @@ export function NotificationsMenu() {
   const openOrder = (order: Order) => {
     markRead(order.id)
     setOpen(false)
-    navigate('/matrix', { state: { jumpToIso: order.deadline } })
+    navigate('/matrix', { state: { jumpToIso: order.deadline, highlightOrderId: order.id } })
   }
 
   return (

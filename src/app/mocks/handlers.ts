@@ -5,6 +5,10 @@ import { buildAnalyticsSummary } from './data/analytics-aggregations'
 import type { Order } from '@/entities/order'
 import type { Machine } from '@/entities/machine'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
+import type { Shift, WorkCalendarSettings } from '@/entities/shift'
+import type { Role, Group, TeamMember } from '@/entities/user'
+import type { NotificationChannel, NotificationRule, NotificationTemplate } from '@/entities/notification-setting'
+import type { ApiKey, Webhook } from '@/entities/integration'
 
 const NETWORK_DELAY: [number, number] = [180, 420]
 
@@ -459,5 +463,299 @@ export const handlers = [
     product.techMap.outputPerHour = body.outputPerHour
     product.techMap.packageMultiplicity = body.packageMultiplicity
     return HttpResponse.json(product)
+  }),
+
+  // ---- Настройки: Рабочий календарь ----
+
+  http.get('/api/shifts', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().shifts)
+  }),
+
+  http.post('/api/shifts', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Omit<Shift, 'id'>
+    const dataset = getMockDataset()
+    const shift: Shift = { id: `shift-new-${Date.now()}`, ...body }
+    dataset.shifts.push(shift)
+    return HttpResponse.json(shift, { status: 201 })
+  }),
+
+  http.patch('/api/shifts/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<Shift, 'id'>>
+    const dataset = getMockDataset()
+    const shift = dataset.shifts.find((s) => s.id === params.id)
+    if (!shift) return HttpResponse.json({ message: 'Смена не найдена' }, { status: 404 })
+    Object.assign(shift, body)
+    return HttpResponse.json(shift)
+  }),
+
+  http.delete('/api/shifts/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.shifts.findIndex((s) => s.id === params.id)
+    if (index === -1) return HttpResponse.json({ message: 'Смена не найдена' }, { status: 404 })
+    dataset.shifts.splice(index, 1)
+    return HttpResponse.json({ deleted: true })
+  }),
+
+  http.get('/api/work-calendar', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().workCalendar)
+  }),
+
+  http.patch('/api/work-calendar', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as WorkCalendarSettings
+    const dataset = getMockDataset()
+    dataset.workCalendar = body
+    return HttpResponse.json(dataset.workCalendar)
+  }),
+
+  // ---- Настройки: Пользователи и роли ----
+
+  http.get('/api/roles', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().roles)
+  }),
+
+  http.post('/api/roles', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Omit<Role, 'id'>
+    const dataset = getMockDataset()
+    const role: Role = { id: `role-new-${Date.now()}`, ...body }
+    dataset.roles.push(role)
+    return HttpResponse.json(role, { status: 201 })
+  }),
+
+  http.patch('/api/roles/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<Role, 'id'>>
+    const dataset = getMockDataset()
+    const role = dataset.roles.find((r) => r.id === params.id)
+    if (!role) return HttpResponse.json({ message: 'Роль не найдена' }, { status: 404 })
+    Object.assign(role, body)
+    return HttpResponse.json(role)
+  }),
+
+  http.delete('/api/roles/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.roles.findIndex((r) => r.id === params.id)
+    if (index === -1) return HttpResponse.json({ message: 'Роль не найдена' }, { status: 404 })
+    if (dataset.teamMembers.some((m) => m.roleId === params.id)) {
+      return HttpResponse.json({ message: 'Роль назначена сотрудникам — сначала переназначьте их' }, { status: 409 })
+    }
+    dataset.roles.splice(index, 1)
+    return HttpResponse.json({ deleted: true })
+  }),
+
+  http.get('/api/groups', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().groups)
+  }),
+
+  http.post('/api/groups', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Omit<Group, 'id'>
+    const dataset = getMockDataset()
+    const group: Group = { id: `group-new-${Date.now()}`, ...body }
+    dataset.groups.push(group)
+    return HttpResponse.json(group, { status: 201 })
+  }),
+
+  http.patch('/api/groups/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<Group, 'id'>>
+    const dataset = getMockDataset()
+    const group = dataset.groups.find((g) => g.id === params.id)
+    if (!group) return HttpResponse.json({ message: 'Группа не найдена' }, { status: 404 })
+    Object.assign(group, body)
+    return HttpResponse.json(group)
+  }),
+
+  http.delete('/api/groups/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.groups.findIndex((g) => g.id === params.id)
+    if (index === -1) return HttpResponse.json({ message: 'Группа не найдена' }, { status: 404 })
+    dataset.groups.splice(index, 1)
+    for (const member of dataset.teamMembers) {
+      member.groupIds = member.groupIds.filter((id) => id !== params.id)
+    }
+    return HttpResponse.json({ deleted: true })
+  }),
+
+  http.get('/api/team-members', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().teamMembers)
+  }),
+
+  http.post('/api/team-members', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Omit<TeamMember, 'id'>
+    const dataset = getMockDataset()
+    const member: TeamMember = { id: `tm-new-${Date.now()}`, ...body }
+    dataset.teamMembers.push(member)
+    return HttpResponse.json(member, { status: 201 })
+  }),
+
+  http.patch('/api/team-members/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<TeamMember, 'id'>>
+    const dataset = getMockDataset()
+    const member = dataset.teamMembers.find((m) => m.id === params.id)
+    if (!member) return HttpResponse.json({ message: 'Сотрудник не найден' }, { status: 404 })
+    Object.assign(member, body)
+    return HttpResponse.json(member)
+  }),
+
+  http.delete('/api/team-members/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.teamMembers.findIndex((m) => m.id === params.id)
+    if (index === -1) return HttpResponse.json({ message: 'Сотрудник не найден' }, { status: 404 })
+    dataset.teamMembers.splice(index, 1)
+    for (const group of dataset.groups) {
+      group.memberIds = group.memberIds.filter((id) => id !== params.id)
+    }
+    return HttpResponse.json({ deleted: true })
+  }),
+
+  // ---- Настройки: Уведомления ----
+
+  http.get('/api/notification-channels', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().notificationChannels)
+  }),
+
+  http.patch('/api/notification-channels/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<NotificationChannel, 'id'>>
+    const dataset = getMockDataset()
+    const channel = dataset.notificationChannels.find((c) => c.id === params.id)
+    if (!channel) return HttpResponse.json({ message: 'Канал не найден' }, { status: 404 })
+    Object.assign(channel, body)
+    return HttpResponse.json(channel)
+  }),
+
+  http.get('/api/notification-rules', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().notificationRules)
+  }),
+
+  http.patch('/api/notification-rules/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<NotificationRule, 'id'>>
+    const dataset = getMockDataset()
+    const rule = dataset.notificationRules.find((r) => r.id === params.id)
+    if (!rule) return HttpResponse.json({ message: 'Правило не найдено' }, { status: 404 })
+    Object.assign(rule, body)
+    return HttpResponse.json(rule)
+  }),
+
+  http.get('/api/notification-templates', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().notificationTemplates)
+  }),
+
+  http.patch('/api/notification-templates/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<NotificationTemplate, 'id'>>
+    const dataset = getMockDataset()
+    const template = dataset.notificationTemplates.find((t) => t.id === params.id)
+    if (!template) return HttpResponse.json({ message: 'Шаблон не найден' }, { status: 404 })
+    Object.assign(template, body)
+    return HttpResponse.json(template)
+  }),
+
+  // ---- Настройки: Интеграции ----
+
+  http.get('/api/api-keys', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().apiKeys)
+  }),
+
+  http.post('/api/api-keys', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as { label: string }
+    const dataset = getMockDataset()
+    const token = crypto.randomUUID().replace(/-/g, '')
+    const key: ApiKey = { id: `key-new-${Date.now()}`, label: body.label, tokenMasked: `tg_live_${token.slice(0, 8)}`, createdAt: new Date().toISOString() }
+    dataset.apiKeys.push(key)
+    return HttpResponse.json(key, { status: 201 })
+  }),
+
+  http.delete('/api/api-keys/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.apiKeys.findIndex((k) => k.id === params.id)
+    if (index === -1) return HttpResponse.json({ message: 'Ключ не найден' }, { status: 404 })
+    dataset.apiKeys.splice(index, 1)
+    return HttpResponse.json({ deleted: true })
+  }),
+
+  http.get('/api/webhooks', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().webhooks)
+  }),
+
+  http.post('/api/webhooks', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as { url: string; event: string }
+    const dataset = getMockDataset()
+    const webhook: Webhook = { id: `wh-new-${Date.now()}`, url: body.url, event: body.event, enabled: true, createdAt: new Date().toISOString() }
+    dataset.webhooks.push(webhook)
+    return HttpResponse.json(webhook, { status: 201 })
+  }),
+
+  http.patch('/api/webhooks/:id', async ({ request, params }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<Omit<Webhook, 'id'>>
+    const dataset = getMockDataset()
+    const webhook = dataset.webhooks.find((w) => w.id === params.id)
+    if (!webhook) return HttpResponse.json({ message: 'Вебхук не найден' }, { status: 404 })
+    Object.assign(webhook, body)
+    return HttpResponse.json(webhook)
+  }),
+
+  http.delete('/api/webhooks/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.webhooks.findIndex((w) => w.id === params.id)
+    if (index === -1) return HttpResponse.json({ message: 'Вебхук не найден' }, { status: 404 })
+    dataset.webhooks.splice(index, 1)
+    return HttpResponse.json({ deleted: true })
+  }),
+
+  http.get('/api/integrations', async () => {
+    await simulateNetwork()
+    return HttpResponse.json(getMockDataset().integrations)
+  }),
+
+  http.post('/api/integrations/:id/toggle', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const integration = dataset.integrations.find((i) => i.id === params.id)
+    if (!integration) return HttpResponse.json({ message: 'Интеграция не найдена' }, { status: 404 })
+    if (integration.status === 'connected') {
+      integration.status = 'disconnected'
+      integration.connectedAt = null
+    } else {
+      integration.status = 'connected'
+      integration.connectedAt = new Date().toISOString()
+    }
+    return HttpResponse.json(integration)
+  }),
+
+  /** Восстановление из резервной копии (вкладка "Система") — перезаписывает переданные срезы мок-датасета. */
+  http.post('/api/system/restore', async ({ request }) => {
+    await simulateNetwork()
+    const body = (await request.json()) as Partial<{ machines: Machine[]; products: unknown[]; teamMembers: TeamMember[] }>
+    const dataset = getMockDataset()
+    if (body.machines) dataset.machines = body.machines
+    if (body.teamMembers) dataset.teamMembers = body.teamMembers
+    return HttpResponse.json({ restored: true })
   }),
 ]

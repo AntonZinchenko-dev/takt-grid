@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { startOfDay, endOfDay, format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import {
-  Info,
   Mail,
   Phone,
   Clock,
@@ -17,15 +16,17 @@ import {
   ShieldCheck,
   LogOut,
   ChevronRight,
+  ChevronDown,
 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
 import { Card, CardBody, CardHeader, CardTitle } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
-import { useAuthStore } from '@/entities/session'
+import { useAuthStore, type NotificationPrefs, type WorkPreferences } from '@/entities/session'
 import { useOrdersPageQuery } from '@/entities/order'
 import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
 import { ProfileEditDrawer } from './ProfileEditDrawer'
+import { ChangePasswordDrawer } from './ChangePasswordDrawer'
 
 const PERMISSIONS = [
   { label: 'Планирование', granted: true },
@@ -43,33 +44,20 @@ const RECENT_ACTIONS = [
   { when: '02 августа, 16:05', label: 'Bulk Edit', ref: null, detail: '18 операций, 6 станков' },
 ]
 
-const SESSIONS = [
-  { device: 'Windows · Chrome', location: 'Екатеринбург, Россия', when: 'Сейчас', current: true },
-  { device: 'macOS · Safari', location: 'Екатеринбург, Россия', when: 'Вчера, 18:12', current: false },
-]
-
-const SECURITY_ROWS = [
-  { label: 'Изменить пароль', icon: KeyRound },
-  { label: 'Двухфакторная аутентификация (2FA)', icon: ShieldCheck, badge: 'Выключена' },
-  { label: 'История входов', icon: History },
-]
-
 export function ProfilePage() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
-  const [editOpen, setEditOpen] = useState(false)
+  const notifications = useAuthStore((s) => s.notifications)
+  const setNotification = useAuthStore((s) => s.setNotification)
+  const preferences = useAuthStore((s) => s.preferences)
+  const setPreferences = useAuthStore((s) => s.setPreferences)
+  const twoFactorEnabled = useAuthStore((s) => s.twoFactorEnabled)
+  const toggleTwoFactor = useAuthStore((s) => s.toggleTwoFactor)
+  const loginHistory = useAuthStore((s) => s.loginHistory)
 
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    conflicts: true,
-    deadline: true,
-    downtime: true,
-    nightlyReport: false,
-  })
-  const [homeScreen, setHomeScreen] = useState<'matrix' | 'dashboard'>('matrix')
-  const [defaultZoom, setDefaultZoom] = useState<'day' | 'week' | 'month'>('day')
-  const [density, setDensity] = useState<'compact' | 'comfortable' | 'large'>('comfortable')
+  const [editOpen, setEditOpen] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const todayRange = useMemo(() => ({ from: startOfDay(new Date()).toISOString(), to: endOfDay(new Date()).toISOString() }), [])
   const assignedTodayQuery = useAssignmentsWindowQuery(todayRange.from, todayRange.to)
@@ -77,17 +65,14 @@ export function ProfilePage() {
 
   if (!user) return null
 
-  const toggleNotification = (key: keyof typeof notifications) => setNotifications((prev) => ({ ...prev, [key]: !prev[key] }))
+  const toggleNotification = (key: keyof NotificationPrefs) => setNotification(key, !notifications[key])
+  const setPreference = <K extends keyof WorkPreferences>(key: K, value: WorkPreferences[K]) => setPreferences({ [key]: value })
+  const currentSession = loginHistory[0]
 
   return (
     <>
       <TopHeader title="Профиль пользователя" subtitle="Управление аккаунтом, настройками и безопасностью" />
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] px-3 py-2 text-xs text-[var(--color-ink-600)]">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Мок-профиль демо-проекта: авторизация и данные ниже не связаны с реальным HR/IAM — в проде это отдельный защищённый сервис.
-        </div>
-
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
           <Card className="lg:col-span-5">
             <CardBody className="space-y-4">
@@ -286,7 +271,12 @@ export function ProfilePage() {
                     ] as const
                   ).map(([value, label]) => (
                     <label key={value} className="flex items-center gap-1.5 text-[var(--color-ink-900)]">
-                      <input type="radio" checked={homeScreen === value} onChange={() => setHomeScreen(value)} className="accent-[var(--color-brand-600)]" />
+                      <input
+                        type="radio"
+                        checked={preferences.homeScreen === value}
+                        onChange={() => setPreference('homeScreen', value)}
+                        className="accent-[var(--color-brand-600)]"
+                      />
                       {label}
                     </label>
                   ))}
@@ -297,13 +287,18 @@ export function ProfilePage() {
                 <div className="flex gap-3">
                   {(
                     [
+                      ['hour', 'Час'],
                       ['day', 'День'],
                       ['week', 'Неделя'],
-                      ['month', 'Месяц'],
                     ] as const
                   ).map(([value, label]) => (
                     <label key={value} className="flex items-center gap-1.5 text-[var(--color-ink-900)]">
-                      <input type="radio" checked={defaultZoom === value} onChange={() => setDefaultZoom(value)} className="accent-[var(--color-brand-600)]" />
+                      <input
+                        type="radio"
+                        checked={preferences.defaultZoom === value}
+                        onChange={() => setPreference('defaultZoom', value)}
+                        className="accent-[var(--color-brand-600)]"
+                      />
                       {label}
                     </label>
                   ))}
@@ -320,7 +315,33 @@ export function ProfilePage() {
                     ] as const
                   ).map(([value, label]) => (
                     <label key={value} className="flex items-center gap-1.5 text-[var(--color-ink-900)]">
-                      <input type="radio" checked={density === value} onChange={() => setDensity(value)} className="accent-[var(--color-brand-600)]" />
+                      <input
+                        type="radio"
+                        checked={preferences.density === value}
+                        onChange={() => setPreference('density', value)}
+                        className="accent-[var(--color-brand-600)]"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-1 text-[var(--color-ink-400)]">Тема</p>
+                <div className="flex gap-3">
+                  {(
+                    [
+                      ['light', 'Светлая'],
+                      ['dark', 'Тёмная'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label key={value} className="flex items-center gap-1.5 text-[var(--color-ink-900)]">
+                      <input
+                        type="radio"
+                        checked={preferences.theme === value}
+                        onChange={() => setPreference('theme', value)}
+                        className="accent-[var(--color-brand-600)]"
+                      />
                       {label}
                     </label>
                   ))}
@@ -370,24 +391,19 @@ export function ProfilePage() {
               <CardTitle>Активные сессии</CardTitle>
             </CardHeader>
             <CardBody className="space-y-2.5 text-xs">
-              {SESSIONS.map((s) => (
-                <div key={s.device} className="flex items-start gap-1.5">
-                  <Monitor className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1.5 font-medium text-[var(--color-ink-900)]">
-                      {s.device}
-                      {s.current && (
-                        <Badge color="var(--color-priority-low)" bg="var(--color-priority-low-bg)">
-                          Текущая
-                        </Badge>
-                      )}
-                    </p>
-                    <p className="text-[var(--color-ink-600)]">
-                      {s.location} · {s.when}
-                    </p>
-                  </div>
+              <div className="flex items-start gap-1.5">
+                <Monitor className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 font-medium text-[var(--color-ink-900)]">
+                    {currentSession?.device ?? 'Этот браузер'}
+                    <Badge color="var(--color-priority-low)" bg="var(--color-priority-low-bg)">
+                      Текущая
+                    </Badge>
+                  </p>
+                  <p className="text-[var(--color-ink-600)]">{currentSession ? format(new Date(currentSession.at), 'd MMM, HH:mm', { locale: ru }) : 'Сейчас'}</p>
                 </div>
-              ))}
+              </div>
+              <p className="text-[var(--color-ink-400)]">Демо ограничено одним браузером — другие устройства здесь не появятся.</p>
             </CardBody>
           </Card>
 
@@ -396,29 +412,64 @@ export function ProfilePage() {
               <CardTitle>Безопасность</CardTitle>
             </CardHeader>
             <CardBody className="space-y-1">
-              {SECURITY_ROWS.map((row) => (
-                <button
-                  key={row.label}
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs text-[var(--color-ink-900)] hover:bg-[var(--color-canvas)]"
-                >
-                  <row.icon className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
-                  <span className="flex-1">{row.label}</span>
-                  {'badge' in row && row.badge && <span className="text-[var(--color-ink-400)]">{row.badge}</span>}
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(true)}
+                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs text-[var(--color-ink-900)] hover:bg-[var(--color-canvas)]"
+              >
+                <KeyRound className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
+                <span className="flex-1">Изменить пароль</span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleTwoFactor}
+                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs text-[var(--color-ink-900)] hover:bg-[var(--color-canvas)]"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
+                <span className="flex-1">Двухфакторная аутентификация (2FA)</span>
+                <span className={twoFactorEnabled ? 'font-medium text-[var(--color-priority-low)]' : 'text-[var(--color-ink-400)]'}>
+                  {twoFactorEnabled ? 'Включена' : 'Выключена'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((v) => !v)}
+                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs text-[var(--color-ink-900)] hover:bg-[var(--color-canvas)]"
+              >
+                <History className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
+                <span className="flex-1">История входов</span>
+                {historyOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
+                ) : (
                   <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--color-ink-400)]" />
-                </button>
-              ))}
+                )}
+              </button>
+              {historyOpen && (
+                <div className="ml-5.5 space-y-1 border-l border-[var(--color-border)] pl-2.5">
+                  {loginHistory.length === 0 && <p className="py-1 text-[var(--color-ink-400)]">Входов пока не было</p>}
+                  {loginHistory.map((entry, i) => (
+                    <p key={entry.at} className="py-0.5 text-[var(--color-ink-600)]">
+                      {format(new Date(entry.at), 'd MMM, HH:mm', { locale: ru })} · {entry.device}
+                      {i === 0 && <span className="text-[var(--color-priority-low)]"> · текущий</span>}
+                    </p>
+                  ))}
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={logout}
-                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs font-medium text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left text-xs font-medium text-[var(--color-priority-critical)] hover:bg-[var(--color-priority-critical-bg)]"
               >
                 <LogOut className="h-3.5 w-3.5 shrink-0" />
                 <span className="flex-1">Выйти со всех устройств</span>
               </button>
               <p className="flex items-center gap-1 pt-1 text-[10px] text-[var(--color-ink-400)]">
                 <Shield className="h-3 w-3 shrink-0" />
-                Демо: пароль и 2FA не подключены
+                Пароль и 2FA хранятся только локально в браузере — учебный мок без бэкенда
               </p>
             </CardBody>
           </Card>
@@ -426,6 +477,7 @@ export function ProfilePage() {
       </main>
 
       {editOpen && <ProfileEditDrawer onClose={() => setEditOpen(false)} />}
+      {passwordOpen && <ChangePasswordDrawer onClose={() => setPasswordOpen(false)} />}
     </>
   )
 }
