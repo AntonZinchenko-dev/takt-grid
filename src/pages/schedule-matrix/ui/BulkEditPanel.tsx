@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { observer } from 'mobx-react-lite'
 import { X, Loader2 } from 'lucide-react'
 import type { GridStore } from '../model/grid-store'
+import type { UndoStore } from '../model/undo-store'
 import { applyBulkFormula, type BulkEditMode } from '../lib/bulk-formula'
 import type { OccupancyIndex } from '@/shared/lib/occupancy-index'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
@@ -13,6 +14,7 @@ import { cn } from '@/shared/lib/cn'
 
 interface BulkEditPanelProps {
   store: GridStore
+  undoStore: UndoStore
   occupancyIndex: OccupancyIndex
   assignmentsById: Map<string, ScheduleAssignment>
   ordersById: Map<string, Order>
@@ -32,6 +34,7 @@ const PREVIEW_LIMIT = 20
 
 export const BulkEditPanel = observer(function BulkEditPanel({
   store,
+  undoStore,
   occupancyIndex,
   assignmentsById,
   ordersById,
@@ -74,10 +77,20 @@ export const BulkEditPanel = observer(function BulkEditPanel({
       id: row.assignmentId,
       plannedQuantity: applyBulkFormula({ currentQuantity: row.currentQuantity, packageMultiplicity: row.packageMultiplicity }, params),
     }))
+    const inverseUpdates = affected.map((row) => ({ id: row.assignmentId, plannedQuantity: row.currentQuantity }))
     bulkMutation.mutate(
       { updates },
       {
         onSuccess: () => {
+          undoStore.push({
+            label: `массовое редактирование (${affected.length})`,
+            undo: async () => {
+              await bulkMutation.mutateAsync({ updates: inverseUpdates })
+            },
+            redo: async () => {
+              await bulkMutation.mutateAsync({ updates })
+            },
+          })
           store.clearSelection()
           onClose()
         },

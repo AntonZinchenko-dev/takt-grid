@@ -16,12 +16,15 @@ import type { Order } from '@/entities/order'
 import type { DowntimeRule } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import { ApiError } from '@/shared/api'
+import type { UndoStore } from '../../model/undo-store'
+import { broadcastMatrixEvent } from '../../model/use-presence-channel'
 
 const LABEL_WIDTH = 224
 const ROW_VERTICAL_PADDING = 8
 
 interface ScheduleGridProps {
   store: GridStore
+  undoStore: UndoStore
   occupancyIndex: OccupancyIndex
   assignmentsById: Map<string, ScheduleAssignment>
   ordersById: Map<string, Order>
@@ -43,6 +46,7 @@ interface ScheduleGridProps {
  */
 export const ScheduleGrid = observer(function ScheduleGrid({
   store,
+  undoStore,
   occupancyIndex,
   assignmentsById,
   ordersById,
@@ -148,6 +152,17 @@ export const ScheduleGrid = observer(function ScheduleGrid({
     if (rowIndex !== -1) rowVirtualizer.scrollToIndex(rowIndex, { align: 'center' })
   }, [store.highlightedAssignmentId, assignmentsById, store, rowVirtualizer])
 
+  // Транслируем начало/конец перетаскивания другим вкладкам (см. PresenceBar) — реагируем
+  // на переход store.dragGhost null↔не-null, а не оборачиваем startBlockDrag/cancelBlockDrag
+  // в OrderBlock.tsx, чтобы не тащить presence-логику в компонент самого блока.
+  const wasDraggingRef = useRef(false)
+  useEffect(() => {
+    const isDragging = Boolean(store.dragGhost)
+    if (isDragging && !wasDraggingRef.current) broadcastMatrixEvent({ type: 'dragging-start' })
+    if (!isDragging && wasDraggingRef.current) broadcastMatrixEvent({ type: 'dragging-end' })
+    wasDraggingRef.current = isDragging
+  }, [store.dragGhost])
+
   // Esc отменяет активный drag-перенос
   useEffect(() => {
     if (!store.dragGhost) return
@@ -191,21 +206,40 @@ export const ScheduleGrid = observer(function ScheduleGrid({
         return
       }
 
+      // Снимок "до" для undo — берём из origin-полей ghost, а не из кэша, он уже инвалидируется к моменту commit.
+      const originRow = store.flatRows[ghost.originRowIndex]
+      const originMachineId = originRow && originRow.kind === 'machine' ? originRow.machine.id : targetRow.machine.id
+      const originStartMs = store.epochMs + ghost.originHourStart * HOUR_MS
+      const originEndMs = originStartMs + ghost.durationHours * HOUR_MS
+      const newMachineId = targetRow.machine.id
+
       moveMutation.mutate(
         {
           id: ghost.assignmentId,
-          machineId: targetRow.machine.id,
+          machineId: newMachineId,
           startAt: new Date(newStartMs).toISOString(),
           endAt: new Date(newEndMs).toISOString(),
         },
         {
+          onSuccess: () => {
+            broadcastMatrixEvent({ type: 'assignment-moved', orderCode: ghost.orderCode, machineName: targetRow.machine.name, assignmentId: ghost.assignmentId, machineId: newMachineId })
+            undoStore.push({
+              label: `перенос ${ghost.orderCode}`,
+              undo: async () => {
+                await moveMutation.mutateAsync({ id: ghost.assignmentId, machineId: originMachineId, startAt: new Date(originStartMs).toISOString(), endAt: new Date(originEndMs).toISOString() })
+              },
+              redo: async () => {
+                await moveMutation.mutateAsync({ id: ghost.assignmentId, machineId: newMachineId, startAt: new Date(newStartMs).toISOString(), endAt: new Date(newEndMs).toISOString() })
+              },
+            })
+          },
           onError: (err) => {
             showDropError(err instanceof ApiError ? err.message : 'Не удалось перенести заказ')
           },
         },
       )
     },
-    [store, occupancyIndex, moveMutation, showDropError],
+    [store, undoStore, occupancyIndex, moveMutation, showDropError],
   )
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {

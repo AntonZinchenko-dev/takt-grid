@@ -5,6 +5,7 @@ import { useOrdersQuery } from '@/entities/order'
 import { useMachinesQuery } from '@/entities/machine'
 import { useProductsQuery } from '@/entities/product'
 import { NotificationsMenu } from './NotificationsMenu'
+import { AiAssistantMenu } from './AiAssistantMenu'
 import { HelpMenu } from './HelpMenu'
 import { ProfileMenu } from './ProfileMenu'
 
@@ -164,6 +165,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
 
       <div className="flex shrink-0 items-center gap-1.5">
         {actions}
+        <AiAssistantMenu />
         <NotificationsMenu />
         <HelpMenu />
         <ProfileMenu />

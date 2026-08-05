@@ -22,6 +22,14 @@ const MATRIX_LEGEND = [
   { label: 'Выполнен', color: 'var(--color-priority-done)' },
 ] as const
 
+const GLOBAL_SHORTCUTS = [{ keys: 'Ctrl/⌘ K', label: 'Командная палитра — поиск и быстрые переходы' }]
+
+const MATRIX_SHORTCUTS = [
+  { keys: 'Ctrl/⌘ Z', label: 'Отменить последнее действие' },
+  { keys: 'Ctrl/⌘ ⇧ Z', label: 'Повторить отменённое действие' },
+  { keys: 'Esc', label: 'Отменить активный перенос заказа' },
+]
+
 const TIPS: Record<string, string> = {
   '/': 'В таблице «Заказы, требующие внимания» кнопка «Открыть» сразу переносит в нужный момент матрицы планирования.',
   '/matrix': 'Перетащите блок заказа на другой станок или время, чтобы перенести его — Esc отменяет перенос. Потяните по пустой области грида, чтобы выделить несколько заказов для массового редактирования количества.',
@@ -68,6 +76,18 @@ export function HelpMenu() {
               <p className="text-xs text-[var(--color-ink-600)]">{tip}</p>
             </div>
           )}
+
+          <div className="border-b border-[var(--color-border)] px-3.5 py-2.5">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-ink-400)]">Горячие клавиши</p>
+            <div className="space-y-1">
+              {[...GLOBAL_SHORTCUTS, ...(location.pathname === '/matrix' ? MATRIX_SHORTCUTS : [])].map((s) => (
+                <div key={s.keys} className="flex items-center justify-between gap-3 text-xs text-[var(--color-ink-600)]">
+                  <span>{s.label}</span>
+                  <kbd className="shrink-0 rounded border border-[var(--color-border)] bg-[var(--color-canvas)] px-1.5 py-0.5 font-sans text-[10px] font-medium text-[var(--color-ink-600)]">{s.keys}</kbd>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {location.pathname === '/matrix' && (
             <div className="border-b border-[var(--color-border)] px-3.5 py-2.5">

@@ -1,10 +1,12 @@
 import { observer } from 'mobx-react-lite'
-import { CalendarIcon, ChevronLeft, ChevronRight, Plus, Printer } from 'lucide-react'
+import { CalendarIcon, ChevronLeft, ChevronRight, Plus, Printer, Undo2, Redo2, Sparkles, FlaskConical } from 'lucide-react'
 import type { GridStore } from '../model/grid-store'
+import type { UndoStore } from '../model/undo-store'
 import { ZOOM_LABEL, RANGE_START_DAYS, RANGE_END_DAYS, DAY_MS, startOfDay, type ZoomLevel } from '../lib/timeline'
 import type { Workshop } from '@/entities/workshop'
 import { statusLabel, priorityLabel, type OrderPriority, type OrderStatus } from '@/entities/order'
 import { Button } from '@/shared/ui/Button'
+import { useToastStore } from '@/shared/lib/toast-store'
 import { cn } from '@/shared/lib/cn'
 
 const toDateInputValue = (date: Date) => {
@@ -18,12 +20,16 @@ const PRIORITY_OPTIONS: OrderPriority[] = ['low', 'normal', 'high', 'critical']
 
 interface ToolbarProps {
   store: GridStore
+  undoStore: UndoStore
   workshops: Workshop[]
   onCreateOrder: () => void
   onExportShift: () => void
+  onAutoSchedule: () => void
+  onWhatIf: () => void
 }
 
-export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrder, onExportShift }: ToolbarProps) {
+export const Toolbar = observer(function Toolbar({ store, undoStore, workshops, onCreateOrder, onExportShift, onAutoSchedule, onWhatIf }: ToolbarProps) {
+  const pushToast = useToastStore((s) => s.push)
   const today = startOfDay(new Date())
   const minDate = new Date(today.getTime() + RANGE_START_DAYS * DAY_MS)
   const maxDate = new Date(today.getTime() + (RANGE_END_DAYS - 1) * DAY_MS)
@@ -128,6 +134,43 @@ export const Toolbar = observer(function Toolbar({ store, workshops, onCreateOrd
           <CalendarIcon className="h-3.5 w-3.5" />
           Сегодня
         </Button>
+
+        <div className="flex items-center overflow-hidden rounded-lg border border-[var(--color-border)]">
+          <button
+            title="Отменить"
+            aria-label="Отменить"
+            disabled={!undoStore.canUndo}
+            onClick={() => undoStore.undo().then((label) => label && pushToast(`Отменено: ${label}`, 'info'))}
+            className="flex h-9 w-8 items-center justify-center bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Undo2 className="h-4 w-4" />
+          </button>
+          <button
+            title="Повторить"
+            aria-label="Повторить"
+            disabled={!undoStore.canRedo}
+            onClick={() => undoStore.redo().then((label) => label && pushToast(`Повторено: ${label}`, 'info'))}
+            className="flex h-9 w-8 items-center justify-center border-l border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Redo2 className="h-4 w-4" />
+          </button>
+          <button
+            title="Что если…"
+            aria-label="Что если…"
+            onClick={onWhatIf}
+            className="flex h-9 w-8 items-center justify-center border-l border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]"
+          >
+            <FlaskConical className="h-4 w-4" />
+          </button>
+          <button
+            title="Авто-расставить"
+            aria-label="Авто-расставить"
+            onClick={onAutoSchedule}
+            className="flex h-9 w-8 items-center justify-center border-l border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-ink-600)] hover:bg-[var(--color-canvas)]"
+          >
+            <Sparkles className="h-4 w-4" />
+          </button>
+        </div>
 
         <Button size="sm" variant="secondary" onClick={onExportShift}>
           <Printer className="h-3.5 w-3.5" />

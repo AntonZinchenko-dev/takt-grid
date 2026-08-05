@@ -4,6 +4,7 @@ export {
   useMoveAssignmentMutation,
   useUpdateAssignmentResultMutation,
   useCreateAssignmentMutation,
+  useDeleteAssignmentMutation,
   useBulkUpdateAssignmentsMutation,
   type MoveAssignmentParams,
   type UpdateAssignmentResultParams,

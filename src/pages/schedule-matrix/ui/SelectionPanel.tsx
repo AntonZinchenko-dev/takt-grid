@@ -2,6 +2,7 @@ import { observer } from 'mobx-react-lite'
 import { useMemo, useState } from 'react'
 import { ArrowRightLeft, Copy, Loader2, Pencil, Trash2, X } from 'lucide-react'
 import type { GridStore } from '../model/grid-store'
+import type { UndoStore } from '../model/undo-store'
 import { DAY_MS } from '../lib/timeline'
 import type { OccupancyIndex } from '@/shared/lib/occupancy-index'
 import { useMoveAssignmentMutation, type ScheduleAssignment } from '@/entities/schedule-assignment'
@@ -22,6 +23,7 @@ const STATUS_DOT: Record<OrderStatus, string> = {
 
 interface SelectionPanelProps {
   store: GridStore
+  undoStore: UndoStore
   occupancyIndex: OccupancyIndex
   assignmentsById: Map<string, ScheduleAssignment>
   ordersById: Map<string, Order>
@@ -30,7 +32,7 @@ interface SelectionPanelProps {
 
 type ActionMode = 'move' | 'copy' | 'delete' | null
 
-export const SelectionPanel = observer(function SelectionPanel({ store, occupancyIndex, assignmentsById, ordersById, onOpenBulkEdit }: SelectionPanelProps) {
+export const SelectionPanel = observer(function SelectionPanel({ store, undoStore, occupancyIndex, assignmentsById, ordersById, onOpenBulkEdit }: SelectionPanelProps) {
   const selection = store.selection
   const range = store.selectionRangeMs
   const machines = store.selectedMachines
@@ -78,6 +80,15 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
     setActionError(null)
     const deltaMs = shiftDays * DAY_MS
 
+    // Для 'move' снимаем "до"-снимок заранее — undo этого батча просто откатит те же назначения обратно.
+    const moveBefore = summary.entries.map(({ assignment }) => ({ id: assignment.id, machineId: assignment.machineId, startAt: assignment.startAt, endAt: assignment.endAt }))
+    const moveAfter = summary.entries.map(({ assignment }) => ({
+      id: assignment.id,
+      machineId: assignment.machineId,
+      startAt: new Date(new Date(assignment.startAt).getTime() + deltaMs).toISOString(),
+      endAt: new Date(new Date(assignment.endAt).getTime() + deltaMs).toISOString(),
+    }))
+
     const results = await Promise.allSettled(
       summary.entries.map(({ order, assignment }) => {
         const newStartAt = new Date(new Date(assignment.startAt).getTime() + deltaMs).toISOString()
@@ -104,6 +115,17 @@ export const SelectionPanel = observer(function SelectionPanel({ store, occupanc
       const message = reason.reason instanceof ApiError ? reason.reason.message : 'Не удалось выполнить операцию'
       setActionError(`${failed.length} из ${results.length} не выполнено: ${message}`)
     } else {
+      if (mode === 'move') {
+        undoStore.push({
+          label: `перенос выделения (${moveBefore.length})`,
+          undo: async () => {
+            await Promise.all(moveBefore.map((m) => moveMutation.mutateAsync(m)))
+          },
+          redo: async () => {
+            await Promise.all(moveAfter.map((m) => moveMutation.mutateAsync(m)))
+          },
+        })
+      }
       closeAction()
       store.clearSelection()
     }

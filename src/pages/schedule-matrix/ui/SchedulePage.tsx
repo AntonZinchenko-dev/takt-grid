@@ -9,7 +9,12 @@ import type { Workshop } from '@/entities/workshop'
 import { useMachinesQuery } from '@/entities/machine'
 import type { Machine } from '@/entities/machine'
 import { GridStore } from '../model/grid-store'
+import { UndoStore } from '../model/undo-store'
+import { usePresenceChannel } from '../model/use-presence-channel'
 import { useScheduleData } from '../model/use-schedule-data'
+import { PresenceBar } from './PresenceBar'
+import { AutoScheduleDrawer } from './AutoScheduleDrawer'
+import { WhatIfDrawer } from './WhatIfDrawer'
 import type { ZoomLevel } from '../lib/timeline'
 import { Toolbar } from './Toolbar'
 import { ScheduleGrid } from './grid/ScheduleGrid'
@@ -19,6 +24,12 @@ import { OrderWizard } from './wizard/OrderWizard'
 import { ReassignOrderWizard } from './wizard/ReassignOrderWizard'
 import { OrderDetailDrawer } from './OrderDetailDrawer'
 import { ShiftExportDrawer } from './ShiftExportDrawer'
+import { useToastStore } from '@/shared/lib/toast-store'
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
+}
 
 export function SchedulePage() {
   const workshopsQuery = useWorkshopsQuery()
@@ -44,12 +55,15 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   // дальнейшие переключения зума пользователем в сторе живут независимо.
   const defaultZoomRef = useRef(useAuthStore.getState().preferences.defaultZoom)
   const [store] = useState(() => new GridStore(workshops, machines, new Date(), defaultZoomRef.current))
+  const [undoStore] = useState(() => new UndoStore())
   const [bulkEditOpen, setBulkEditOpen] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [openAssignmentId, setOpenAssignmentId] = useState<string | null>(null)
   const [conflictResolve, setConflictResolve] = useState<{ reason?: string } | null>(null)
   const [reassignOrderId, setReassignOrderId] = useState<string | null>(null)
   const [shiftExportOpen, setShiftExportOpen] = useState(false)
+  const [autoScheduleOpen, setAutoScheduleOpen] = useState(false)
+  const [whatIfOpen, setWhatIfOpen] = useState(false)
   const data = useScheduleData(store.anchorDate)
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -68,13 +82,33 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const openWorkshop = openMachine ? workshopsById.get(openMachine.workshopId) : undefined
   const reassignOrder = reassignOrderId ? data.ordersById.get(reassignOrderId) : undefined
 
+  const pushToast = useToastStore((s) => s.push)
+  const presence = usePresenceChannel(store)
+
+  // Ctrl+Z / Ctrl+Shift+Z — undo/redo действий матрицы. Игнорируем в полях ввода, где
+  // Ctrl+Z должен работать как обычная отмена текста, а не откатывать перенос заказа.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z' || isEditableTarget(e.target)) return
+      e.preventDefault()
+      if (e.shiftKey) {
+        undoStore.redo().then((label) => label && pushToast(`Повторено: ${label}`, 'info'))
+      } else {
+        undoStore.undo().then((label) => label && pushToast(`Отменено: ${label}`, 'info'))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undoStore, pushToast])
+
   // Переход из "Дашборда"/поиска сразу к нужному моменту в матрице.
   // Зависим от location.key (не []): navigate() к тому же /matrix даёт новый key,
   // так что переход срабатывает и если пользователь уже был на этой странице.
   useEffect(() => {
-    const state = location.state as { jumpToIso?: string; zoom?: ZoomLevel } | null
+    const state = location.state as { jumpToIso?: string; zoom?: ZoomLevel; openWizard?: boolean } | null
     if (state?.jumpToIso) store.jumpToDate(new Date(state.jumpToIso))
     if (state?.zoom) store.setZoom(state.zoom)
+    if (state?.openWizard) setWizardOpen(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
 
@@ -140,9 +174,19 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
-      <Toolbar store={store} workshops={workshops} onCreateOrder={() => setWizardOpen(true)} onExportShift={() => setShiftExportOpen(true)} />
+      <Toolbar
+        store={store}
+        undoStore={undoStore}
+        workshops={workshops}
+        onCreateOrder={() => setWizardOpen(true)}
+        onExportShift={() => setShiftExportOpen(true)}
+        onAutoSchedule={() => setAutoScheduleOpen(true)}
+        onWhatIf={() => setWhatIfOpen(true)}
+      />
+      <PresenceBar selfName={presence.selfName} peers={presence.peers} />
       <ScheduleGrid
         store={store}
+        undoStore={undoStore}
         occupancyIndex={data.occupancyIndex}
         assignmentsById={data.assignmentsById}
         ordersById={data.ordersById}
@@ -155,6 +199,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
       />
       <SelectionPanel
         store={store}
+        undoStore={undoStore}
         occupancyIndex={data.occupancyIndex}
         assignmentsById={data.assignmentsById}
         ordersById={data.ordersById}
@@ -163,6 +208,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
       {bulkEditOpen && (
         <BulkEditPanel
           store={store}
+          undoStore={undoStore}
           occupancyIndex={data.occupancyIndex}
           assignmentsById={data.assignmentsById}
           ordersById={data.ordersById}
@@ -207,6 +253,12 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
           defaultDate={store.anchorDate}
           onClose={() => setShiftExportOpen(false)}
         />
+      )}
+      {autoScheduleOpen && (
+        <AutoScheduleDrawer store={store} undoStore={undoStore} machines={machines} downtimeByMachine={data.downtimeByMachine} onClose={() => setAutoScheduleOpen(false)} />
+      )}
+      {whatIfOpen && (
+        <WhatIfDrawer store={store} machines={machines} products={data.products} downtimeByMachine={data.downtimeByMachine} onClose={() => setWhatIfOpen(false)} />
       )}
     </main>
   )

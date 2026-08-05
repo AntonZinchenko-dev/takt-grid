@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
 import { SidebarNav } from '@/widgets/sidebar-nav'
+import { CommandPalette } from '@/widgets/command-palette'
 
 function RouteFallback() {
   return (
@@ -20,6 +21,7 @@ export function RootLayout() {
           <Outlet />
         </Suspense>
       </div>
+      <CommandPalette />
     </div>
   )
 }

@@ -80,6 +80,18 @@ export function useCreateAssignmentMutation() {
   })
 }
 
+/** Снимает назначение и возвращает заказ в "нуждается в переназначении" — используется для отмены (undo) авто-расстановки. */
+export function useDeleteAssignmentMutation() {
+  const queryClient = useQueryClient()
+  return useMutation<{ deleted: true }, ApiError, string>({
+    mutationFn: (id) => fetchJson<{ deleted: true }>(`/api/assignments/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    },
+  })
+}
+
 export interface BulkUpdateParams {
   updates: Array<{ id: string; plannedQuantity: number }>
 }

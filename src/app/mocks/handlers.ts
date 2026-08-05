@@ -321,6 +321,28 @@ export const handlers = [
     return HttpResponse.json(assignment)
   }),
 
+  /**
+   * Снимает назначение без удаления заказа (в отличие от DELETE /api/orders/:id) — заказ
+   * возвращается в "нуждается в переназначении". Нужно для отмены (undo) авто-расстановки:
+   * пересоздание заказа дало бы новый id, а тут identity заказа сохраняется.
+   */
+  http.delete('/api/assignments/:id', async ({ params }) => {
+    await simulateNetwork()
+    const dataset = getMockDataset()
+    const index = dataset.assignments.findIndex((a) => a.id === params.id)
+    if (index === -1) {
+      return HttpResponse.json({ message: 'Назначение не найдено' }, { status: 404 })
+    }
+    const [assignment] = dataset.assignments.splice(index, 1)
+    const order = dataset.orders.find((o) => o.id === assignment!.orderId)
+    const machineName = dataset.machines.find((m) => m.id === assignment!.machineId)?.name
+    if (order && order.status !== 'done') {
+      order.status = 'needs_reassignment'
+      logOrderEvent(dataset, { orderId: order.id, type: 'unassigned', at: new Date().toISOString(), machineName, reason: 'Отменено (undo)' })
+    }
+    return HttpResponse.json({ deleted: true })
+  }),
+
   /** Bulk Edit — массовое изменение plannedQuantity по итогам формулы, посчитанной на клиенте (см. lib/bulk-formula.ts). */
   http.patch('/api/assignments/bulk', async ({ request }) => {
     await simulateNetwork()
