@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Loader2, Plus } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
 import { Card } from '@/shared/ui/Card'
@@ -28,23 +28,31 @@ export function MachinesPage() {
   const [creating, setCreating] = useState(false)
   const [page, setPage] = useState(1)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const location = useLocation()
-  const handledLocationKeyRef = useRef<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  // Переход из глобального поиска в шапке — открыть карточку станка, перейти на его страницу и подсветить строку.
-  // Ключуем по location.key (не по data), иначе фоновый рефетч того же списка станков заново
-  // прыгал бы на страницу и перезапускал подсветку спустя долгое время после перехода.
+  // Переход из глобального поиска/командной палитры/AI-помощника — открыть карточку станка и
+  // подсветить строку. Через query-параметр, а не location.state: state переживает F5 (браузер
+  // хранит его в истории), а обычный ref для "уже обработано" при реальном reload создаётся
+  // заново — раньше это давало повторное открытие карточки после каждого обновления страницы.
   useEffect(() => {
-    const state = location.state as { openMachineId?: string } | null
-    if (!state?.openMachineId || !machinesQuery.data || handledLocationKeyRef.current === location.key) return
-    handledLocationKeyRef.current = location.key
-    setSelectedId(state.openMachineId)
-    setHighlightedId(state.openMachineId)
-    const index = machinesQuery.data.findIndex((m) => m.id === state.openMachineId)
+    const openMachineId = searchParams.get('openMachine')
+    if (!openMachineId || !machinesQuery.data) return
+    setSelectedId(openMachineId)
+    setHighlightedId(openMachineId)
+    const index = machinesQuery.data.findIndex((m) => m.id === openMachineId)
     if (index !== -1) setPage(Math.floor(index / PAGE_SIZE) + 1)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('openMachine')
+        return next
+      },
+      { replace: true },
+    )
     const timer = window.setTimeout(() => setHighlightedId(null), 2200)
     return () => window.clearTimeout(timer)
-  }, [location.key, location.state, machinesQuery.data])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, machinesQuery.data])
 
   const from = useMemo(() => new Date(Date.now() + RANGE_START_DAYS * DAY_MS).toISOString(), [])
   const to = useMemo(() => new Date(Date.now() + RANGE_END_DAYS * DAY_MS).toISOString(), [])

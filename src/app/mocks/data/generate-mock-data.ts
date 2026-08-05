@@ -115,7 +115,7 @@ const GROUPS: GroupDef[] = [
   { id: 'packaging', name: 'Упаковка', workshopIndex: 3, namePrefixes: ['Упаковочная линия UP', 'Фасовочный автомат FA'], capacityRange: [60, 150] },
 ]
 
-const MACHINES_PER_GROUP = 2
+const MACHINES_PER_GROUP = 3
 
 const PRODUCT_DEFS: Array<{ name: string; groupId: string; outputPerHour: number; packageMultiplicity: number }> = [
   { name: 'Корпус насоса', groupId: 'milling', outputPerHour: 12, packageMultiplicity: 6 },
@@ -219,11 +219,7 @@ function buildScheduleAndOrders(
   now: Date,
 ): { orders: Order[]; assignments: ScheduleAssignment[]; events: OrderEvent[] } {
   const rangeStart = now.getTime() + RANGE_START_DAYS * DAY
-  // TODO(temp/manual-testing): пусто с 6 числа текущего месяца — чтобы вручную
-  // потыкать создание/перенос заказов на чистом холсте. Убрать перед демо/коммитом.
-  const manualTestCutoff = new Date(now.getFullYear(), now.getMonth(), 6, 0, 0, 0, 0)
-  if (manualTestCutoff.getTime() <= now.getTime()) manualTestCutoff.setMonth(manualTestCutoff.getMonth() + 1)
-  const rangeEnd = Math.min(now.getTime() + RANGE_END_DAYS * DAY, manualTestCutoff.getTime())
+  const rangeEnd = now.getTime() + RANGE_END_DAYS * DAY
 
   const orders: Order[] = []
   const assignments: ScheduleAssignment[] = []
@@ -406,15 +402,23 @@ function buildTeamMembers(): TeamMember[] {
     { id: 'tm-6', name: 'Мария Новикова', email: 'm.novikova@company.ru', phone: '+7 (900) 666-66-66', roleId: 'planner', groupIds: ['grp-planning'], status: 'invited' },
     { id: 'tm-7', name: 'Павел Соколов', email: 'p.sokolov@company.ru', phone: '+7 (900) 777-77-77', roleId: 'viewer', groupIds: ['grp-shop2'], status: 'disabled' },
     { id: 'tm-8', name: 'Екатерина Морозова', email: 'e.morozova@company.ru', phone: '+7 (900) 888-88-88', roleId: 'operator', groupIds: ['grp-shop1'], status: 'active' },
+    { id: 'tm-9', name: 'Алексей Фёдоров', email: 'a.fedorov@company.ru', phone: '+7 (900) 999-99-99', roleId: 'operator', groupIds: ['grp-shop3'], status: 'active' },
+    { id: 'tm-10', name: 'Наталья Козлова', email: 'n.kozlova@company.ru', phone: '+7 (900) 101-01-01', roleId: 'operator', groupIds: ['grp-shop3'], status: 'active' },
+    { id: 'tm-11', name: 'Виктор Соловьёв', email: 'v.solovyov@company.ru', phone: '+7 (900) 111-01-01', roleId: 'operator', groupIds: ['grp-shop4'], status: 'active' },
+    { id: 'tm-12', name: 'Татьяна Лебедева', email: 't.lebedeva@company.ru', phone: '+7 (900) 121-01-01', roleId: 'operator', groupIds: ['grp-shop4'], status: 'invited' },
+    { id: 'tm-13', name: 'Игорь Никитин', email: 'i.nikitin@company.ru', phone: '+7 (900) 131-01-01', roleId: 'viewer', groupIds: ['grp-shop3'], status: 'active' },
+    { id: 'tm-14', name: 'Юлия Абрамова', email: 'y.abramova@company.ru', phone: '+7 (900) 141-01-01', roleId: 'planner', groupIds: ['grp-planning'], status: 'active' },
   ]
 }
 
 function buildGroups(): Group[] {
   return [
     { id: 'grp-admin', name: 'Администрация', memberIds: ['tm-2'] },
-    { id: 'grp-planning', name: 'Плановый отдел', memberIds: ['tm-1', 'tm-6'] },
+    { id: 'grp-planning', name: 'Плановый отдел', memberIds: ['tm-1', 'tm-6', 'tm-14'] },
     { id: 'grp-shop1', name: 'Цех №1 — Металлообработка', memberIds: ['tm-3', 'tm-4', 'tm-8'] },
     { id: 'grp-shop2', name: 'Цех №2 — Покраска', memberIds: ['tm-5', 'tm-7'] },
+    { id: 'grp-shop3', name: 'Цех №3 — Сборка', memberIds: ['tm-9', 'tm-10', 'tm-13'] },
+    { id: 'grp-shop4', name: 'Цех №4 — Упаковка', memberIds: ['tm-11', 'tm-12'] },
   ]
 }
 

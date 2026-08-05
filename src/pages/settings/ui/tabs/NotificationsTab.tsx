@@ -68,7 +68,7 @@ export function NotificationsTab() {
             onClick={() => setSubview(sv.id)}
             className={cn(
               'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-              subview === sv.id ? 'bg-white text-[var(--color-ink-900)] shadow-sm' : 'text-[var(--color-ink-600)]',
+              subview === sv.id ? 'bg-[var(--color-surface)] text-[var(--color-ink-900)] shadow-sm' : 'text-[var(--color-ink-600)]',
             )}
           >
             {sv.label}

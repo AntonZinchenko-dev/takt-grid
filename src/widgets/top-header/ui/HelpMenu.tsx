@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { HelpCircle, Lightbulb, LayoutGrid, Grid3x3, ClipboardList, Cog, Package, AlertTriangle, BarChart3, CalendarDays, Settings } from 'lucide-react'
+import { HelpCircle, Lightbulb, LayoutGrid, Grid3x3, ClipboardList, Cog, Package, AlertTriangle, BarChart3, Settings } from 'lucide-react'
 
 const SECTIONS = [
   { to: '/', label: 'Дашборд', icon: LayoutGrid, description: 'Обзор текущей загрузки и ключевые показатели' },
@@ -10,7 +10,6 @@ const SECTIONS = [
   { to: '/catalog', label: 'Продукция и техкарты', icon: Package, description: 'Каталог продуктов и параметры техкарт' },
   { to: '/conflicts', label: 'Конфликты', icon: AlertTriangle, description: 'Пересечения по станкам и заказы под угрозой дедлайна' },
   { to: '/analytics', label: 'Аналитика', icon: BarChart3, description: 'Загрузка, выпуск и простои за период' },
-  { to: '/calendar', label: 'Календарь', icon: CalendarDays, description: 'Рабочий календарь и загрузка по дням' },
   { to: '/settings', label: 'Настройки', icon: Settings, description: 'Рабочий календарь, роли, пороги уведомлений' },
 ] as const
 
@@ -38,8 +37,7 @@ const TIPS: Record<string, string> = {
   '/catalog': 'Измените параметры техкарты продукта (выработка в час, кратность упаковки) — расчёт длительности обновится для новых назначений.',
   '/conflicts': 'Здесь собраны все пересечения по станкам и заказы под угрозой срыва дедлайна — то же самое, что в колокольчике уведомлений, но полным списком.',
   '/analytics': 'Переключайте период просмотра, чтобы сравнить загрузку, выпуск и простои за разные интервалы.',
-  '/calendar': 'Рабочий календарь показывает, какие дни считаются рабочими при планировании загрузки.',
-  '/settings': 'Изменения на этой странице сохраняются только в рамках текущей сессии браузера.',
+  '/settings': 'Рабочий календарь, роли и остальные параметры — во вкладках этой страницы. Изменения сохраняются только в рамках текущей сессии браузера.',
 }
 
 export function HelpMenu() {

@@ -45,7 +45,7 @@ export function AiAssistantMenu() {
 
   const handleSelectItem = (item: AssistantResultItem) => {
     setOpen(false)
-    navigate(item.navigate.path, { state: item.navigate.state })
+    navigate(item.path)
   }
 
   const handleSubmit = () => {

@@ -5,6 +5,7 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/shared/ui/Card'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { priorityBgVar, priorityColorVar, priorityLabel } from '@/entities/order'
+import { matrixJumpLink } from '@/shared/lib/deep-links'
 import type { DashboardSummary } from '../model/types'
 
 export function AttentionOrdersTable({ orders }: { orders: DashboardSummary['attentionOrders'] }) {
@@ -55,7 +56,7 @@ export function AttentionOrdersTable({ orders }: { orders: DashboardSummary['att
                         </Button>
                       </Link>
                     ) : (
-                      <Link to="/matrix" state={{ jumpToIso: order.deadline }}>
+                      <Link to={matrixJumpLink(order.deadline)}>
                         <Button size="sm" variant="secondary">
                           Открыть
                         </Button>

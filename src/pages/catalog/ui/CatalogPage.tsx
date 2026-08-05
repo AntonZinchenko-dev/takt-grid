@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
 import { Card } from '@/shared/ui/Card'
@@ -18,8 +18,7 @@ export function CatalogPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [page, setPage] = useState(1)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const location = useLocation()
-  const handledLocationKeyRef = useRef<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const allProducts = productsQuery.data ?? []
   const pageProducts = allProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -34,19 +33,28 @@ export function CatalogPage() {
     return map
   }, [machinesQuery.data])
 
-  // Переход из глобального поиска в шапке — перейти на страницу продукта и подсветить строку.
-  // Ключуем по location.key (не по data), иначе фоновый рефетч списка продуктов заново
-  // прыгал бы на страницу и перезапускал подсветку спустя долгое время после перехода.
+  // Переход из глобального поиска/командной палитры/AI-помощника — подсветить строку продукта.
+  // Через query-параметр, а не location.state: state переживает F5 (браузер хранит его в
+  // истории), а ref "уже обработано" при реальном reload создаётся заново — раньше это давало
+  // повторную подсветку после каждого обновления страницы.
   useEffect(() => {
-    const state = location.state as { highlightProductId?: string } | null
-    if (!state?.highlightProductId || !productsQuery.data || handledLocationKeyRef.current === location.key) return
-    handledLocationKeyRef.current = location.key
-    setHighlightedId(state.highlightProductId)
-    const index = productsQuery.data.findIndex((p) => p.id === state.highlightProductId)
+    const highlightProductId = searchParams.get('highlightProduct')
+    if (!highlightProductId || !productsQuery.data) return
+    setHighlightedId(highlightProductId)
+    const index = productsQuery.data.findIndex((p) => p.id === highlightProductId)
     if (index !== -1) setPage(Math.floor(index / PAGE_SIZE) + 1)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('highlightProduct')
+        return next
+      },
+      { replace: true },
+    )
     const timer = window.setTimeout(() => setHighlightedId(null), 2200)
     return () => window.clearTimeout(timer)
-  }, [location.key, location.state, productsQuery.data])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, productsQuery.data])
 
   return (
     <>

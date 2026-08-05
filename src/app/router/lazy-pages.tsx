@@ -18,9 +18,6 @@ export const ConflictsPage = lazy(() =>
 export const AnalyticsPage = lazy(() =>
   import('@/pages/analytics').then((m) => ({ default: m.AnalyticsPage })),
 )
-export const CalendarPage = lazy(() =>
-  import('@/pages/calendar').then((m) => ({ default: m.CalendarPage })),
-)
 export const SettingsPage = lazy(() =>
   import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
 )

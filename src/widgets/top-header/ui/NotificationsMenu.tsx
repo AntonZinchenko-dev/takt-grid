@@ -4,6 +4,7 @@ import { Bell, AlertTriangle, Clock, Check, CheckCheck } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useOrdersQuery, statusLabel, type Order } from '@/entities/order'
+import { orderDeepLink } from '@/shared/lib/deep-links'
 
 const MAX_VISIBLE = 8
 
@@ -37,7 +38,7 @@ export function NotificationsMenu() {
   const openOrder = (order: Order) => {
     markRead(order.id)
     setOpen(false)
-    navigate('/matrix', { state: { jumpToIso: order.deadline, highlightOrderId: order.id } })
+    navigate(orderDeepLink(order.id, order.deadline))
   }
 
   return (

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { observer } from 'mobx-react-lite'
 import { Loader2 } from 'lucide-react'
 import { TopHeader } from '@/widgets/top-header'
@@ -65,9 +65,7 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
   const [autoScheduleOpen, setAutoScheduleOpen] = useState(false)
   const [whatIfOpen, setWhatIfOpen] = useState(false)
   const data = useScheduleData(store.anchorDate)
-  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const handledHighlightKeyRef = useRef<string | null>(null)
 
   const closeDetailDrawer = () => {
     setOpenAssignmentId(null)
@@ -101,76 +99,76 @@ const ScheduleMatrixLoaded = observer(function ScheduleMatrixLoaded({ workshops,
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [undoStore, pushToast])
 
-  // Переход из "Дашборда"/поиска сразу к нужному моменту в матрице.
-  // Зависим от location.key (не []): navigate() к тому же /matrix даёт новый key,
-  // так что переход срабатывает и если пользователь уже был на этой странице.
+  /**
+   * Все одноразовые deep-link входы (дашборд/поиск/уведомления/командная палитра/AI-помощник/
+   * конфликты/реестр заказов) — через query-параметры, а не location.state. state навсегда
+   * прилипает к конкретной записи истории браузера и переживает обновление страницы (F5),
+   * а компонентный ref, которым раньше отмечали "уже обработано", при реальном reload создаётся
+   * заново и ничего не помнит — в паре они гарантированно проигрывали действие повторно после
+   * каждого F5 (это и был "старый баг"). Параметры вычищаем из URL сразу после применения —
+   * ровно поэтому reload на уже очищенном URL ничего не повторяет.
+   */
   useEffect(() => {
-    const state = location.state as { jumpToIso?: string; zoom?: ZoomLevel; openWizard?: boolean } | null
-    if (state?.jumpToIso) store.jumpToDate(new Date(state.jumpToIso))
-    if (state?.zoom) store.setZoom(state.zoom)
-    if (state?.openWizard) setWizardOpen(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.key])
-
-  // Переход из глобального поиска для конкретного заказа — уточняем дату до его реального
-  // назначения (грубый jumpToIso выше — это дедлайн, не факт расписания), открываем карточку
-  // и коротко подсвечиваем блок. Ждём подгрузки окна назначений на нужную дату: пока в
-  // assignmentByOrderId ничего нет, тихо выходим и перепроверяем на следующий рендер.
-  useEffect(() => {
-    const state = location.state as { highlightOrderId?: string } | null
-    if (!state?.highlightOrderId || handledHighlightKeyRef.current === location.key) return
-    const assignment = data.assignmentByOrderId.get(state.highlightOrderId)
-    if (!assignment) return
-    handledHighlightKeyRef.current = location.key
-    store.jumpToDate(new Date(assignment.startAt))
-    setConflictResolve(null)
-    setOpenAssignmentId(assignment.id)
-    store.setHighlightedAssignment(assignment.id, assignment.machineId)
-    window.setTimeout(() => store.setHighlightedAssignment(null), 2500)
-  }, [location.key, location.state, data.assignmentByOrderId, store])
-
-  // Переход из "Конфликтов" — через query-параметры, не через location.state: state навсегда
-  // прилипает к конкретной записи истории, так что при возврате на неё (кнопка "назад")
-  // конфликт открывался бы заново, даже если он давно решён. Параметры вычищаем из URL
-  // сразу после прочтения — они одноразовые.
-  useEffect(() => {
-    const resolveAssignmentId = searchParams.get('resolve')
-    if (!resolveAssignmentId) return
     const jumpToIso = searchParams.get('jump')
+    const zoom = searchParams.get('zoom') as ZoomLevel | null
+    const openWizardFlag = searchParams.get('openWizard')
+    const resolveAssignmentId = searchParams.get('resolve')
     const reason = searchParams.get('reason')
-    if (jumpToIso) store.jumpToDate(new Date(jumpToIso))
-    setOpenAssignmentId(resolveAssignmentId)
-    setConflictResolve({ reason: reason ?? undefined })
-    store.setHighlightedAssignment(resolveAssignmentId)
-    window.setTimeout(() => store.setHighlightedAssignment(null), 2500)
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('resolve')
-        next.delete('jump')
-        next.delete('reason')
-        return next
-      },
-      { replace: true },
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+    const assignOrderId = searchParams.get('assignOrder')
+    const highlightOrderId = searchParams.get('highlightOrder')
 
-  // Переход из реестра заказов/дашборда для заказа, снятого с графика — открыть мини-мастер переназначения.
-  useEffect(() => {
-    const orderId = searchParams.get('assignOrder')
-    if (!orderId) return
-    setReassignOrderId(orderId)
+    if (!jumpToIso && !zoom && !openWizardFlag && !resolveAssignmentId && !assignOrderId && !highlightOrderId) return
+
+    if (zoom) store.setZoom(zoom)
+    if (openWizardFlag) setWizardOpen(true)
+    if (assignOrderId) setReassignOrderId(assignOrderId)
+
+    if (resolveAssignmentId) {
+      if (jumpToIso) store.jumpToDate(new Date(jumpToIso))
+      setOpenAssignmentId(resolveAssignmentId)
+      setConflictResolve({ reason: reason ?? undefined })
+      store.setHighlightedAssignment(resolveAssignmentId)
+      window.setTimeout(() => store.setHighlightedAssignment(null), 2500)
+    }
+
+    // Уточняем дату до реального назначения (грубый jumpToIso — это дедлайн, не факт расписания).
+    // Пока окно назначений для нужной даты не подгрузилось, оставляем highlightOrder/jump в URL
+    // и тихо ждём следующего рендера — эффект перезапустится сам, когда data подъедут.
+    let highlightOrderHandled = false
+    if (highlightOrderId) {
+      const assignment = data.assignmentByOrderId.get(highlightOrderId)
+      if (assignment) {
+        store.jumpToDate(new Date(assignment.startAt))
+        setConflictResolve(null)
+        setOpenAssignmentId(assignment.id)
+        store.setHighlightedAssignment(assignment.id, assignment.machineId)
+        window.setTimeout(() => store.setHighlightedAssignment(null), 2500)
+        highlightOrderHandled = true
+      } else if (jumpToIso) {
+        store.jumpToDate(new Date(jumpToIso))
+      }
+    } else if (jumpToIso && !resolveAssignmentId) {
+      store.jumpToDate(new Date(jumpToIso))
+    }
+
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
+        next.delete('zoom')
+        next.delete('openWizard')
         next.delete('assignOrder')
+        next.delete('resolve')
+        next.delete('reason')
+        if (!highlightOrderId || highlightOrderHandled) {
+          next.delete('highlightOrder')
+          next.delete('jump')
+        }
         return next
       },
       { replace: true },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  }, [searchParams, data.assignmentByOrderId])
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">

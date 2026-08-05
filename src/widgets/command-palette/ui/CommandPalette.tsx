@@ -12,13 +12,13 @@ import {
   Boxes,
   AlertTriangle,
   BarChart3,
-  Calendar,
   Settings,
   UserRound,
 } from 'lucide-react'
 import { useOrdersQuery } from '@/entities/order'
 import { useMachinesQuery } from '@/entities/machine'
 import { useProductsQuery } from '@/entities/product'
+import { orderDeepLink, machineDeepLink, productDeepLink } from '@/shared/lib/deep-links'
 
 const MAX_RESULTS_PER_GROUP = 5
 
@@ -78,7 +78,7 @@ export function CommandPalette() {
 
   const navAndActionItems = useMemo<PaletteItem[]>(
     () => [
-      { id: 'action-create-order', icon: Plus, label: 'Создать заказ', onSelect: () => navigate('/matrix', { state: { openWizard: true } }) },
+      { id: 'action-create-order', icon: Plus, label: 'Создать заказ', onSelect: () => navigate('/matrix?openWizard=1') },
       { id: 'nav-dashboard', icon: LayoutDashboard, label: 'Дашборд', onSelect: () => navigate('/') },
       { id: 'nav-matrix', icon: Table2, label: 'Матрица планирования', onSelect: () => navigate('/matrix') },
       { id: 'nav-orders', icon: ListOrdered, label: 'Заказы', onSelect: () => navigate('/orders') },
@@ -86,7 +86,6 @@ export function CommandPalette() {
       { id: 'nav-catalog', icon: Boxes, label: 'Продукция и техкарты', onSelect: () => navigate('/catalog') },
       { id: 'nav-conflicts', icon: AlertTriangle, label: 'Конфликты', onSelect: () => navigate('/conflicts') },
       { id: 'nav-analytics', icon: BarChart3, label: 'Аналитика', onSelect: () => navigate('/analytics') },
-      { id: 'nav-calendar', icon: Calendar, label: 'Календарь', onSelect: () => navigate('/calendar') },
       { id: 'nav-settings', icon: Settings, label: 'Настройки', onSelect: () => navigate('/settings') },
       { id: 'nav-profile', icon: UserRound, label: 'Профиль', onSelect: () => navigate('/profile') },
     ],
@@ -103,16 +102,16 @@ export function CommandPalette() {
         icon: ClipboardList,
         label: order.code,
         sublabel: order.productName,
-        onSelect: () => navigate('/matrix', { state: { jumpToIso: order.deadline, highlightOrderId: order.id } }),
+        onSelect: () => navigate(orderDeepLink(order.id, order.deadline)),
       }))
       const machineItems: PaletteItem[] = (machinesQuery.data ?? [])
         .filter((m) => m.name.toLowerCase().includes(q))
         .slice(0, MAX_RESULTS_PER_GROUP)
-        .map((machine) => ({ id: `machine-${machine.id}`, icon: Wrench, label: machine.name, onSelect: () => navigate('/machines', { state: { openMachineId: machine.id } }) }))
+        .map((machine) => ({ id: `machine-${machine.id}`, icon: Wrench, label: machine.name, onSelect: () => navigate(machineDeepLink(machine.id)) }))
       const productItems: PaletteItem[] = (productsQuery.data ?? [])
         .filter((p) => p.name.toLowerCase().includes(q))
         .slice(0, MAX_RESULTS_PER_GROUP)
-        .map((product) => ({ id: `product-${product.id}`, icon: Package, label: product.name, onSelect: () => navigate('/catalog', { state: { highlightProductId: product.id } }) }))
+        .map((product) => ({ id: `product-${product.id}`, icon: Package, label: product.name, onSelect: () => navigate(productDeepLink(product.id)) }))
 
       if (orderItems.length > 0) result.push({ label: 'Заказы', items: orderItems })
       if (machineItems.length > 0) result.push({ label: 'Станки', items: machineItems })

@@ -2,6 +2,7 @@ import { statusLabel, type Order } from '@/entities/order'
 import type { Machine } from '@/entities/machine'
 import type { Product } from '@/entities/product'
 import type { ScheduleAssignment } from '@/entities/schedule-assignment'
+import { orderDeepLink, machineDeepLink } from '@/shared/lib/deep-links'
 
 export interface AssistantData {
   orders: Order[]
@@ -14,7 +15,8 @@ export interface AssistantResultItem {
   id: string
   label: string
   sublabel?: string
-  navigate: { path: string; state?: Record<string, unknown> }
+  /** Полный путь вместе с query-параметрами — см. shared/lib/deep-links. */
+  path: string
 }
 
 export interface AssistantAnswer {
@@ -25,11 +27,11 @@ export interface AssistantAnswer {
 const MAX_ITEMS = 6
 
 function orderItem(order: Order): AssistantResultItem {
-  return { id: order.id, label: order.code, sublabel: `${statusLabel(order.status)} · ${order.productName}`, navigate: { path: '/matrix', state: { jumpToIso: order.deadline, highlightOrderId: order.id } } }
+  return { id: order.id, label: order.code, sublabel: `${statusLabel(order.status)} · ${order.productName}`, path: orderDeepLink(order.id, order.deadline) }
 }
 
 function machineItem(machine: Machine, sublabel?: string): AssistantResultItem {
-  return { id: machine.id, label: machine.name, sublabel, navigate: { path: '/machines', state: { openMachineId: machine.id } } }
+  return { id: machine.id, label: machine.name, sublabel, path: machineDeepLink(machine.id) }
 }
 
 const MACHINE_STATUS_LABEL: Record<Machine['status'], string> = { running: 'работает', idle: 'простаивает', down: 'авария' }
@@ -94,7 +96,7 @@ const MATCHERS = [answerOrderLookup, answerMachineLookup, answerAtRisk, answerNe
  * Сознательный выбор: у приложения нет бэкенда, а значит негде безопасно хранить ключ реального AI API —
  * зашивать его в клиентский бандл небезопасно для публично задеплоенного демо. Вместо этого — набор
  * распознаваемых намерений поверх уже загруженных данных, с ответами, которые ведут на конкретные записи
- * (тот же navigate(path, {state}) — контракт, что у глобального поиска и командной палитры).
+ * (те же query-параметры deep-link'ов, что у глобального поиска и командной палитры — см. shared/lib/deep-links).
  */
 export function answerQuery(question: string, data: AssistantData): AssistantAnswer {
   const q = question.trim().toLowerCase()

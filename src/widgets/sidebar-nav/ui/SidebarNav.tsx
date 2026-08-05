@@ -7,7 +7,6 @@ import {
   Package,
   AlertTriangle,
   BarChart3,
-  CalendarDays,
   Settings,
   UserCircle,
   PanelLeftClose,
@@ -24,7 +23,6 @@ const NAV_ITEMS = [
   { to: '/catalog', label: 'Продукция и техкарты', icon: Package },
   { to: '/conflicts', label: 'Конфликты', icon: AlertTriangle },
   { to: '/analytics', label: 'Аналитика', icon: BarChart3 },
-  { to: '/calendar', label: 'Календарь', icon: CalendarDays },
   { to: '/profile', label: 'Профиль', icon: UserCircle },
   { to: '/settings', label: 'Настройки', icon: Settings },
 ] as const

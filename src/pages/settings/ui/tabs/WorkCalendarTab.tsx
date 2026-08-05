@@ -7,8 +7,16 @@ import { Card, CardBody, CardHeader, CardTitle } from '@/shared/ui/Card'
 import { Button } from '@/shared/ui/Button'
 import { Badge } from '@/shared/ui/Badge'
 import { cn } from '@/shared/lib/cn'
-import { useHolidayOverridesQuery, useToggleHolidayMutation } from '@/entities/holiday'
-import { useShiftsQuery, useWorkCalendarQuery, useUpdateWorkCalendarMutation, type Shift } from '@/entities/shift'
+import {
+  useHolidayOverridesQuery,
+  useToggleHolidayMutation,
+  useShiftsQuery,
+  useWorkCalendarQuery,
+  useUpdateWorkCalendarMutation,
+  type Shift,
+} from '@/entities/shift'
+import { useAssignmentsWindowQuery } from '@/entities/schedule-assignment'
+import { matrixJumpLink } from '@/shared/lib/deep-links'
 import { ShiftDrawer } from '../drawers/ShiftDrawer'
 import { shiftDurationLabel } from '../../lib/shift-duration'
 import { SettingsOverviewStrip } from './SettingsOverviewStrip'
@@ -47,6 +55,16 @@ export function WorkCalendarTab() {
     }
     return result
   }, [gridStart, gridEnd])
+
+  const assignmentsQuery = useAssignmentsWindowQuery(gridStart.toISOString(), gridEnd.toISOString())
+  const countsByDay = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const a of assignmentsQuery.data ?? []) {
+      const key = format(new Date(a.startAt), 'yyyy-MM-dd')
+      map.set(key, (map.get(key) ?? 0) + 1)
+    }
+    return map
+  }, [assignmentsQuery.data])
 
   const selectedKey = format(selectedDate, 'yyyy-MM-dd')
   const selectedIsDefaultWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6
@@ -130,12 +148,14 @@ export function WorkCalendarTab() {
                         const isHoliday = isDefaultWeekend ? !isOverridden : isOverridden
                         const inMonth = isSameMonth(day, month)
                         const isSelected = key === selectedKey
+                        const count = countsByDay.get(key) ?? 0
                         return (
                           <button
                             key={key}
                             onClick={() => setSelectedDate(day)}
+                            title={isOverridden ? 'Отмечено вручную — переключить в блоке ниже' : isDefaultWeekend ? 'Выходной по умолчанию' : 'Рабочий день'}
                             className={cn(
-                              'flex h-9 flex-col items-center justify-center border-b border-r border-[var(--color-border)] text-xs transition-colors hover:bg-[var(--color-canvas)]',
+                              'flex h-16 flex-col items-center gap-0.5 border-b border-r border-[var(--color-border)] py-1 text-xs transition-colors hover:bg-[var(--color-canvas)]',
                               isHoliday && 'bg-[var(--color-priority-critical-bg)]/40',
                               isSelected && 'ring-2 ring-inset ring-[var(--color-brand-600)]',
                             )}
@@ -149,6 +169,16 @@ export function WorkCalendarTab() {
                             >
                               {format(day, 'd')}
                             </span>
+                            {isHoliday && <span className="text-[9px] font-medium text-[var(--color-ink-600)]">Выходной</span>}
+                            {count > 0 && (
+                              <Link
+                                to={matrixJumpLink(day.toISOString())}
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded bg-[var(--color-brand-50)] px-1 py-0.5 text-[10px] font-medium text-[var(--color-brand-700)] hover:underline"
+                              >
+                                {count} зак.
+                              </Link>
+                            )}
                           </button>
                         )
                       })}
@@ -225,10 +255,6 @@ export function WorkCalendarTab() {
                 </div>
               )
             })}
-            <Link to="/calendar" className="mt-1 flex items-center gap-1 text-sm font-medium text-[var(--color-brand-600)] hover:underline">
-              Все праздники и исключения
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
           </CardBody>
         </Card>
       </div>

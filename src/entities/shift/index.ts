@@ -1,4 +1,4 @@
-export type { Shift, WorkCalendarSettings } from './model/types'
+export type { Shift, WorkCalendarSettings, HolidayOverride } from './model/types'
 export {
   useShiftsQuery,
   useCreateShiftMutation,
@@ -6,6 +6,8 @@ export {
   useDeleteShiftMutation,
   useWorkCalendarQuery,
   useUpdateWorkCalendarMutation,
+  useHolidayOverridesQuery,
+  useToggleHolidayMutation,
   type CreateShiftParams,
   type UpdateShiftParams,
 } from './api/queries'

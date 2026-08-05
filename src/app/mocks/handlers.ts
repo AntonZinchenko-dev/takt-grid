@@ -452,7 +452,7 @@ export const handlers = [
     return HttpResponse.json({ rule, unassignedCount }, { status: 201 })
   }),
 
-  /** Дни, вручную переключённые относительно дефолтного статуса будни/выходной (вкладка "Календарь"). */
+  /** Дни, вручную переключённые относительно дефолтного статуса будни/выходной (Настройки → Рабочий календарь). */
   http.get('/api/holidays', async () => {
     await simulateNetwork()
     return HttpResponse.json(Array.from(getMockDataset().holidayOverrides))

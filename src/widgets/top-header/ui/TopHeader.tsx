@@ -4,6 +4,7 @@ import { Search, ClipboardList, Wrench, Package, X } from 'lucide-react'
 import { useOrdersQuery } from '@/entities/order'
 import { useMachinesQuery } from '@/entities/machine'
 import { useProductsQuery } from '@/entities/product'
+import { orderDeepLink, machineDeepLink, productDeepLink } from '@/shared/lib/deep-links'
 import { NotificationsMenu } from './NotificationsMenu'
 import { AiAssistantMenu } from './AiAssistantMenu'
 import { HelpMenu } from './HelpMenu'
@@ -105,7 +106,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
                   <button
                     key={order.id}
                     onClick={() => {
-                      navigate('/matrix', { state: { jumpToIso: order.deadline, highlightOrderId: order.id } })
+                      navigate(orderDeepLink(order.id, order.deadline))
                       close()
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-canvas)]"
@@ -127,7 +128,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
                   <button
                     key={machine.id}
                     onClick={() => {
-                      navigate('/machines', { state: { openMachineId: machine.id } })
+                      navigate(machineDeepLink(machine.id))
                       close()
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-canvas)]"
@@ -146,7 +147,7 @@ export function TopHeader({ title, subtitle, actions }: TopHeaderProps) {
                   <button
                     key={product.id}
                     onClick={() => {
-                      navigate('/catalog', { state: { highlightProductId: product.id } })
+                      navigate(productDeepLink(product.id))
                       close()
                     }}
                     className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-canvas)]"
