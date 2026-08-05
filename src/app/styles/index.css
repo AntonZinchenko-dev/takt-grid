@@ -76,9 +76,30 @@ html {
 /* color-scheme сообщает браузеру, в какой палитре рисовать НЕ-стилизуемые нативные части
    форм-контролов (список <option> у <select>, чекбоксы/радио, скроллбар) — без него в тёмной
    теме сам select красится нашими токенами, а его выпадающий список остаётся светлым по
-   умолчанию (или наоборот на светлой теме поверх тёмной ОС), что и давало "костыльный" вид. */
+   умолчанию (или наоборот на светлой теме поверх тёмной ОС), что и давало "костыльный" вид.
+   Задаём и на :root (для скроллбара окна и контролов без явных классов), и явно на самих
+   select/input/textarea — в части браузеров color-scheme у элемента с собственным
+   background-color/color (а у наших полей он есть почти всегда, см. shared-классы полей)
+   не всегда наследуется от дальнего предка так, как хотелось бы, поэтому дублируем в упор. */
 :root {
   color-scheme: light;
+}
+
+select,
+input,
+textarea {
+  color-scheme: light;
+}
+
+/* Tailwind Preflight сбрасывает background-color у select в transparent. С прозрачным
+   фоном Chromium не подхватывает тёмный вариант popup-списка <option> даже при верном
+   color-scheme (см. комментарий выше) — список рисуется белым поверх тёмной темы, если
+   компонент явно не задал свой bg-[var(--color-surface)] (так было у большинства select
+   в проекте, кроме Toolbar матрицы планирования). Задаём фон/текст глобально, точечные
+   классы компонентов (bg-*, text-*) всё равно их переопределяют, где нужно другое. */
+select {
+  background-color: var(--color-surface);
+  color: var(--color-ink-900);
 }
 
 /* "Тема" (см. Профиль → Рабочие предпочтения) — атрибут data-theme на <html> (см. AppProviders/ThemeSync)
@@ -113,6 +134,12 @@ html {
 
   --color-status-reassign: #c4b5fd;
   --color-status-reassign-bg: #271f45;
+}
+
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] textarea {
+  color-scheme: dark;
 }
 
 @layer base {
